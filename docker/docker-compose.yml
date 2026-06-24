@@ -1,0 +1,18 @@
+services:
+  parawrite:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - '8787:8787'
+    volumes:
+      - ../config/parawrite.yaml:/app/config/parawrite.yaml:ro
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:8787/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3

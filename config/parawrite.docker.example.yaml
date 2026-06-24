@@ -1,0 +1,27 @@
+server:
+  host: 0.0.0.0
+  port: 8787
+
+app:
+  default_provider: DeepSeek
+  default_model: deepseek-v4-flash
+  auto_translate_delay_seconds: 3
+  runtime_env: docker
+  layout:
+    three_column_min_width: 1280
+    two_column_min_width: 768
+
+providers:
+  DeepSeek:
+    type: openai_compatible
+    base_url: https://api.deepseek.com/v1
+    api_key: ${DEEPSEEK_API_KEY}
+    models:
+      - id: deepseek-v4-flash
+        name: DeepSeek V4 Flash
+        default: true
+
+dictionary:
+  free_dictionary: true
+  wiktionary: true
+  llm_fallback: true

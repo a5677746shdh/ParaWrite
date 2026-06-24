@@ -1,0 +1,6 @@
+# Local secrets — never commit
+parawrite.yaml
+parawrite.local.yaml
+
+# Only example templates are tracked
+!*.example.yaml

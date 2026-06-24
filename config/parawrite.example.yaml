@@ -1,0 +1,48 @@
+# ParaWrite configuration template.
+# Copy to parawrite.yaml (gitignored) for local development.
+# Local parawrite.yaml may contain plain-text API keys; only *.example.yaml files are synced to GitHub.
+
+server:
+  host: 0.0.0.0
+  port: 8787
+
+app:
+  default_provider: openai
+  default_model: gpt-4o-mini
+  auto_translate_delay_seconds: 2
+  runtime_env: dev
+  layout:
+    three_column_min_width: 1280
+    two_column_min_width: 768
+
+providers:
+  openai:
+    type: openai_compatible
+    base_url: https://api.openai.com/v1
+    api_key: ${OPENAI_API_KEY}
+    models:
+      - id: gpt-4o-mini
+        name: GPT-4o Mini
+        default: true
+      - id: gpt-4o
+        name: GPT-4o
+
+  deepseek:
+    type: openai_compatible
+    base_url: https://api.deepseek.com/v1
+    api_key: ${DEEPSEEK_API_KEY}
+    models:
+      - id: deepseek-v4-flash
+        name: DeepSeek V4 Flash
+
+  ollama:
+    type: ollama
+    base_url: http://127.0.0.1:11434
+    models:
+      - id: qwen2.5:7b
+        name: Qwen 2.5 7B
+
+dictionary:
+  free_dictionary: true
+  wiktionary: true
+  llm_fallback: true
