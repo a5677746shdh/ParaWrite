@@ -293,6 +293,18 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
 
   const webDistPath = path.resolve(__dirname, '../../web/dist')
   if (fs.existsSync(webDistPath)) {
+    app.use('*', async (c, next) => {
+      await next()
+      const pathname = new URL(c.req.url).pathname
+      if (
+        pathname === '/' ||
+        pathname.endsWith('.html') ||
+        pathname.endsWith('/sw.js') ||
+        pathname.endsWith('/registerSW.js')
+      ) {
+        c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+      }
+    })
     app.use('/*', serveStatic({ root: webDistPath }))
     app.get('*', serveStatic({ path: path.join(webDistPath, 'index.html') }))
   }

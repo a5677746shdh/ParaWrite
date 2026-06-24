@@ -226,6 +226,42 @@ export function isAdjacentWordToRange(
   return clickedPos === firstPos - 1 || clickedPos === lastPos + 1
 }
 
+/**
+ * Remove one word from a consecutive word selection.
+ * Returns null to clear (single word), a new range to shrink, or undefined to ignore.
+ */
+export function shrinkWordRange(
+  segments: TokenSegment[],
+  range: { start: number; end: number },
+  wordIndex: number
+): { start: number; end: number } | null | undefined {
+  if (!isWordInRange(wordIndex, range)) return undefined
+
+  const wordsInRange = segments.filter(
+    (s) => s.isWord && s.index >= range.start && s.index <= range.end
+  )
+  if (wordsInRange.length === 0) return undefined
+
+  if (wordsInRange.length === 1) {
+    return wordsInRange[0].index === wordIndex ? null : undefined
+  }
+
+  const clickedPos = wordsInRange.findIndex((w) => w.index === wordIndex)
+  if (clickedPos === -1) return undefined
+
+  if (clickedPos === 0) {
+    const remaining = wordsInRange.slice(1)
+    return { start: remaining[0].index, end: remaining[remaining.length - 1].index }
+  }
+
+  if (clickedPos === wordsInRange.length - 1) {
+    const remaining = wordsInRange.slice(0, -1)
+    return { start: remaining[0].index, end: remaining[remaining.length - 1].index }
+  }
+
+  return undefined
+}
+
 export function findTokenRangeForText(
   segments: TokenSegment[],
   selectedText: string

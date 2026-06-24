@@ -8,6 +8,7 @@ import {
   isAdjacentWordToRange,
   isWordInRange,
   segmentText,
+  shrinkWordRange,
   type SelectionGranularity,
   type TokenSegment,
 } from '@parawrite/core/client'
@@ -22,7 +23,9 @@ interface TokenEditorProps {
   placeholder?: string
   onTokenClick: (word: string, range: { start: number; end: number }) => void
   onConsecutiveWordSelect?: (word: string, range: { start: number; end: number }) => void
+  onShrinkWordSelect?: (word: string, range: { start: number; end: number }) => void
   onPhraseSelect?: (word: string, range: { start: number; end: number }) => void
+  onDeselect?: () => void
 }
 
 const CLICK_DELAY_MS = 350
@@ -36,7 +39,9 @@ export const TokenEditor = memo(function TokenEditor({
   placeholder,
   onTokenClick,
   onConsecutiveWordSelect,
+  onShrinkWordSelect,
   onPhraseSelect,
+  onDeselect,
 }: TokenEditorProps) {
   const segments = useMemo(() => segmentText(text, lang), [text, lang])
   const containerRef = useRef<HTMLDivElement>(null)
@@ -72,19 +77,74 @@ export const TokenEditor = memo(function TokenEditor({
     onPhraseSelect(phraseText, phraseRange)
   }
 
+  const applyShrinkFromRange = (wordIndex: number) => {
+    if (!selectedRange) return
+
+    const shrunk = shrinkWordRange(segments, selectedRange, wordIndex)
+    if (shrunk === undefined) return
+    if (shrunk === null) {
+      onDeselect?.()
+      return
+    }
+    const phrase = combineTextFromRange(segments, shrunk).trim()
+    onShrinkWordSelect?.(phrase, shrunk)
+  }
+
+  const resolveSelectedRangeClick = () => {
+    const count = clickCountRef.current
+    const pending = pendingClickRef.current
+    clickCountRef.current = 0
+    pendingClickRef.current = null
+    clickTimerRef.current = null
+
+    if (!pending || !selectedRange) return
+
+    if (count >= 2) {
+      onDeselect?.()
+      return
+    }
+
+    applyShrinkFromRange(pending.range.start)
+  }
+
+  const clearClickTimer = () => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current)
+      clickTimerRef.current = null
+    }
+  }
+
   const handleWordClick = (word: string, range: { start: number; end: number }) => {
     if (selectedRange) {
-      if (selectionGranularity === 'word') {
-        if (isWordInRange(range.start, selectedRange)) return
+      if (isWordInRange(range.start, selectedRange)) {
+        clearClickTimer()
 
+        if (selectionGranularity === 'word') {
+          clickCountRef.current = 0
+          pendingClickRef.current = null
+          applyShrinkFromRange(range.start)
+          return
+        }
+
+        if (selectionGranularity === 'clause' || selectionGranularity === 'sentence') {
+          clickCountRef.current += 1
+          pendingClickRef.current = { word, range }
+          clickTimerRef.current = setTimeout(resolveSelectedRangeClick, CLICK_DELAY_MS)
+          return
+        }
+
+        clickCountRef.current = 0
+        pendingClickRef.current = null
+        onDeselect?.()
+        return
+      }
+
+      if (selectionGranularity === 'word') {
         if (
           onConsecutiveWordSelect &&
           isAdjacentWordToRange(segments, range.start, selectedRange)
         ) {
-          if (clickTimerRef.current) {
-            clearTimeout(clickTimerRef.current)
-            clickTimerRef.current = null
-          }
+          clearClickTimer()
           clickCountRef.current = 0
           pendingClickRef.current = null
 
@@ -101,10 +161,7 @@ export const TokenEditor = memo(function TokenEditor({
     clickCountRef.current += 1
     pendingClickRef.current = { word, range }
 
-    if (clickTimerRef.current) {
-      clearTimeout(clickTimerRef.current)
-    }
-
+    clearClickTimer()
     clickTimerRef.current = setTimeout(resolveClick, CLICK_DELAY_MS)
   }
 

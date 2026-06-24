@@ -2,6 +2,16 @@
 
 All notable changes to ParaWrite are documented in this file.
 
+## [0.4.1] — 2026-06-25
+
+### Added
+- Click selected word again to deselect; multi-word selection shrinks from edges only (middle clicks ignored)
+- Sentence/clause selection uses the same consecutive shrink rules; double/triple-click clears the full selection
+
+### Fixed
+- Copy button on HTTP/Docker deployments — `execCommand` fallback when Clipboard API is unavailable
+- PWA stale cache after updates — `skipWaiting`/`clientsClaim` and no-cache headers for HTML and service worker
+
 ## [0.4.0] — 2026-06-25
 
 ### Added

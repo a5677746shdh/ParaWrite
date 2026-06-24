@@ -21,6 +21,7 @@ import {
   fetchSynonyms,
   streamTranslate,
 } from '../api'
+import { copyWithExecCommand, canUseClipboardApi } from '../clipboard'
 import { useTranslationStore } from '../store'
 import { TextStats } from './TextStats'
 import { TokenEditor } from './TokenEditor'
@@ -343,6 +344,10 @@ export function Translator() {
     void loadWordData(word, range, 'word')
   }
 
+  const handleShrinkWordSelect = (word: string, range: { start: number; end: number }) => {
+    void loadWordData(word, range, 'word')
+  }
+
   const clearSelection = () => {
     setSelection(null, null)
     setSynonyms([])
@@ -379,11 +384,22 @@ export function Translator() {
     setSelection(null, null)
   }
 
-  const copyText = async () => {
+  const copyText = () => {
     if (!targetText || copied) return
-    await navigator.clipboard.writeText(targetText)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1000)
+
+    const showCopied = () => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1000)
+    }
+
+    if (canUseClipboardApi()) {
+      void navigator.clipboard!.writeText(targetText).then(showCopied, () => {
+        if (copyWithExecCommand(targetText)) showCopied()
+      })
+      return
+    }
+
+    if (copyWithExecCommand(targetText)) showCopied()
   }
 
   const speak = () => {
@@ -454,7 +470,9 @@ export function Translator() {
           selectionGranularity={selectionGranularity}
           onTokenClick={loadWordData}
           onConsecutiveWordSelect={handleConsecutiveWordSelect}
+          onShrinkWordSelect={handleShrinkWordSelect}
           onPhraseSelect={loadWordData}
+          onDeselect={clearSelection}
           placeholder={t('targetPlaceholder')}
         />
       </div>
