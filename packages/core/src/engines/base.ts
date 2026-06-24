@@ -1,4 +1,7 @@
 import type { ChatMessage, ChatRequest } from '../types.js'
+import type { EngineFetch } from '../proxy-fetch.js'
+
+export type { EngineFetch } from '../proxy-fetch.js'
 
 export interface IEngine {
   chatStream(req: ChatRequest): AsyncIterable<string>

@@ -11,6 +11,7 @@ interface TranslationState {
   meta: PublicMeta | null
   sourceLang: string
   targetLang: string
+  detectedSourceLang: string | null
   provider: string
   model: string
   sourceText: string
@@ -24,10 +25,12 @@ interface TranslationState {
   synonyms: SynonymOption[]
   dictionary: DictionaryEntry | null
   rephraseOptions: RephraseOption[]
+  rephraseOriginalSentence: string | null
   isPanelLoading: boolean
   setMeta: (meta: PublicMeta) => void
   setSourceLang: (lang: string) => void
   setTargetLang: (lang: string) => void
+  setDetectedSourceLang: (lang: string | null) => void
   swapLanguages: () => void
   setProvider: (provider: string) => void
   setModel: (model: string) => void
@@ -45,7 +48,7 @@ interface TranslationState {
   ) => void
   setSynonyms: (synonyms: SynonymOption[]) => void
   setDictionary: (entry: DictionaryEntry | null) => void
-  setRephraseOptions: (options: RephraseOption[]) => void
+  setRephraseOptions: (options: RephraseOption[], originalSentence?: string | null) => void
   setPanelLoading: (value: boolean) => void
   clear: () => void
 }
@@ -54,6 +57,7 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
   meta: null,
   sourceLang: 'auto',
   targetLang: 'en',
+  detectedSourceLang: null,
   provider: '',
   model: '',
   sourceText: '',
@@ -67,6 +71,7 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
   synonyms: [],
   dictionary: null,
   rephraseOptions: [],
+  rephraseOriginalSentence: null,
   isPanelLoading: false,
   setMeta: (meta) =>
     set({
@@ -74,15 +79,20 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
       provider: meta.defaultProvider,
       model: meta.defaultModel,
     }),
-  setSourceLang: (sourceLang) => set({ sourceLang }),
+  setSourceLang: (sourceLang) => set({ sourceLang, detectedSourceLang: null }),
   setTargetLang: (targetLang) => set({ targetLang }),
+  setDetectedSourceLang: (detectedSourceLang) => set({ detectedSourceLang }),
   swapLanguages: () => {
-    const { sourceLang, targetLang, sourceText, targetText } = get()
+    const { sourceLang, targetLang, sourceText, targetText, detectedSourceLang } = get()
+    const effectiveSource = sourceLang === 'auto' ? detectedSourceLang : sourceLang
+    if (!effectiveSource) return
+
     set({
-      sourceLang: targetLang === 'auto' ? 'en' : targetLang,
-      targetLang: sourceLang === 'auto' ? 'en' : sourceLang,
+      sourceLang: targetLang,
+      targetLang: effectiveSource,
       sourceText: targetText,
       targetText: sourceText,
+      detectedSourceLang: null,
     })
   },
   setProvider: (provider) => {
@@ -94,7 +104,11 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
   },
   setModel: (model) => set({ model }),
   setProviderModel: (provider, model) => set({ provider, model }),
-  setSourceText: (sourceText) => set({ sourceText }),
+  setSourceText: (sourceText) =>
+    set({
+      sourceText,
+      detectedSourceLang: sourceText.trim() ? get().detectedSourceLang : null,
+    }),
   setTargetText: (targetText) => set({ targetText }),
   appendTargetText: (chunk) => set((s) => ({ targetText: s.targetText + chunk })),
   setTranslating: (isTranslating) => set({ isTranslating }),
@@ -110,12 +124,14 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
     }),
   setSynonyms: (synonyms) => set({ synonyms }),
   setDictionary: (dictionary) => set({ dictionary }),
-  setRephraseOptions: (rephraseOptions) => set({ rephraseOptions }),
+  setRephraseOptions: (rephraseOptions, rephraseOriginalSentence = null) =>
+    set({ rephraseOptions, rephraseOriginalSentence }),
   setPanelLoading: (isPanelLoading) => set({ isPanelLoading }),
   clear: () =>
     set({
       sourceText: '',
       targetText: '',
+      detectedSourceLang: null,
       error: null,
       selectedWord: null,
       selectedRange: null,
@@ -123,5 +139,6 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
       synonyms: [],
       dictionary: null,
       rephraseOptions: [],
+      rephraseOriginalSentence: null,
     }),
 }))

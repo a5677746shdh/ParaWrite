@@ -1,6 +1,7 @@
 # Local secrets — never commit
 parawrite.yaml
 parawrite.local.yaml
+custom-dictionary.yaml
 
 # Only example templates are tracked
 !*.example.yaml

@@ -1,9 +1,14 @@
 import { memo, useMemo, useRef } from 'react'
 import {
+  combineTextFromRange,
+  extendWordRange,
   extractClauseByWord,
   extractSentenceByWord,
   findTokenRangeForText,
+  isAdjacentWordToRange,
+  isWordInRange,
   segmentText,
+  type SelectionGranularity,
   type TokenSegment,
 } from '@parawrite/core/client'
 import clsx from 'clsx'
@@ -13,8 +18,10 @@ interface TokenEditorProps {
   lang: string
   isStreaming: boolean
   selectedRange: { start: number; end: number } | null
+  selectionGranularity?: SelectionGranularity | null
   placeholder?: string
   onTokenClick: (word: string, range: { start: number; end: number }) => void
+  onConsecutiveWordSelect?: (word: string, range: { start: number; end: number }) => void
   onPhraseSelect?: (word: string, range: { start: number; end: number }) => void
 }
 
@@ -25,8 +32,10 @@ export const TokenEditor = memo(function TokenEditor({
   lang,
   isStreaming,
   selectedRange,
+  selectionGranularity,
   placeholder,
   onTokenClick,
+  onConsecutiveWordSelect,
   onPhraseSelect,
 }: TokenEditorProps) {
   const segments = useMemo(() => segmentText(text, lang), [text, lang])
@@ -64,6 +73,31 @@ export const TokenEditor = memo(function TokenEditor({
   }
 
   const handleWordClick = (word: string, range: { start: number; end: number }) => {
+    if (selectedRange) {
+      if (selectionGranularity === 'word') {
+        if (isWordInRange(range.start, selectedRange)) return
+
+        if (
+          onConsecutiveWordSelect &&
+          isAdjacentWordToRange(segments, range.start, selectedRange)
+        ) {
+          if (clickTimerRef.current) {
+            clearTimeout(clickTimerRef.current)
+            clickTimerRef.current = null
+          }
+          clickCountRef.current = 0
+          pendingClickRef.current = null
+
+          const newRange = extendWordRange(selectedRange, range.start)
+          const phrase = combineTextFromRange(segments, newRange).trim()
+          onConsecutiveWordSelect(phrase, newRange)
+          return
+        }
+      }
+
+      return
+    }
+
     clickCountRef.current += 1
     pendingClickRef.current = { word, range }
 
@@ -76,6 +110,8 @@ export const TokenEditor = memo(function TokenEditor({
 
   const handleMouseUp = () => {
     if (!onPhraseSelect || clickCountRef.current > 0) return
+    if (selectedRange) return
+
     const selection = window.getSelection()
     if (!selection || selection.isCollapsed || !containerRef.current) return
 

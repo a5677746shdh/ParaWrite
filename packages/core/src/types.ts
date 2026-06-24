@@ -6,11 +6,17 @@ export interface ModelConfig {
   default?: boolean
 }
 
+export interface ProxyConfig {
+  /** http(s)://user:pass@host:port or socks5://user:pass@host:port */
+  url: string
+}
+
 export interface ProviderConfig {
   type: ProviderType
   base_url: string
   api_key?: string
   api_path?: string
+  proxy?: ProxyConfig
   models: ModelConfig[]
 }
 
@@ -18,6 +24,29 @@ export interface DictionaryConfig {
   free_dictionary: boolean
   wiktionary: boolean
   llm_fallback: boolean
+}
+
+export interface GlossaryConfig {
+  file?: string
+}
+
+export type AlternativesSeparator = 'comma' | 'period'
+
+export interface AlternativesSeparatorConfig {
+  default?: AlternativesSeparator
+  by_language?: Record<string, AlternativesSeparator>
+}
+
+export interface PhraseWordThresholdConfig {
+  /** Selections with more than this many words are treated as phrases (synonyms/dictionary hidden). */
+  default?: number
+  by_language?: Record<string, number>
+}
+
+export interface AuthConfig {
+  access_totp_secret?: string
+  restart_totp_secret?: string
+  session_ttl_hours?: number
 }
 
 export interface LayoutConfig {
@@ -35,10 +64,15 @@ export interface AppConfig {
     default_model?: string
     auto_translate_delay_seconds?: number
     runtime_env?: string
+    translate_on_enter?: boolean
+    alternatives_separator?: AlternativesSeparatorConfig
+    phrase_word_threshold?: PhraseWordThresholdConfig
     layout?: LayoutConfig
   }
   providers: Record<string, ProviderConfig>
   dictionary: DictionaryConfig
+  glossary?: GlossaryConfig
+  auth?: AuthConfig
 }
 
 export interface PublicProviderInfo {
@@ -57,6 +91,18 @@ export interface PublicMeta {
   layoutBreakpoints: {
     threeColumnMinWidth: number
     twoColumnMinWidth: number
+  }
+  authRequired: boolean
+  restartAuthRequired: boolean
+  authenticated: boolean
+  translateOnEnter: boolean
+  alternativesSeparators: {
+    default: AlternativesSeparator
+    byLanguage: Record<string, AlternativesSeparator>
+  }
+  phraseWordThresholds: {
+    default: number
+    byLanguage: Record<string, number>
   }
 }
 

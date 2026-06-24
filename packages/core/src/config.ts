@@ -1,8 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import yaml from 'js-yaml'
-import type { AppConfig, PublicMeta, ProviderConfig } from './types.js'
+import type { AlternativesSeparator, AppConfig, PublicMeta, ProviderConfig } from './types.js'
 import { BUILD_VERSION } from './version.generated.js'
+import { fromConfigLang, mapConfigLangRecord } from './lang-codes.js'
 
 const DEFAULT_THREE_COLUMN_MIN = 1280
 const DEFAULT_TWO_COLUMN_MIN = 768
@@ -52,6 +53,11 @@ export function findConfigPath(): string {
   throw new Error(
     'Config not found. Copy config/parawrite.example.yaml to config/parawrite.yaml'
   )
+}
+
+export function getConfigDir(configPath?: string): string {
+  const filePath = configPath ?? findConfigPath()
+  return path.dirname(filePath)
 }
 
 export function loadConfig(configPath?: string): AppConfig {
@@ -112,7 +118,58 @@ export function getLayoutBreakpoints(config: AppConfig) {
   }
 }
 
-export function toPublicMeta(config: AppConfig): PublicMeta {
+export function resolveAlternativesSeparator(
+  config: AppConfig,
+  targetLang6391: string
+): AlternativesSeparator {
+  const sepConfig = config.app.alternatives_separator
+  const defaultSep = sepConfig?.default ?? 'comma'
+  if (!sepConfig?.by_language) return defaultSep
+
+  const byLang = mapConfigLangRecord(sepConfig.by_language)
+  return byLang[targetLang6391] ?? defaultSep
+}
+
+export function getAlternativesSeparatorsMeta(config: AppConfig) {
+  const sepConfig = config.app.alternatives_separator
+  return {
+    default: (sepConfig?.default ?? 'comma') as AlternativesSeparator,
+    byLanguage: mapConfigLangRecord(sepConfig?.by_language) as Record<
+      string,
+      AlternativesSeparator
+    >,
+  }
+}
+
+export function getPhraseWordThresholdsMeta(config: AppConfig) {
+  const thresholdConfig = config.app.phrase_word_threshold
+  return {
+    default: thresholdConfig?.default ?? 1,
+    byLanguage: mapConfigLangRecord(thresholdConfig?.by_language) as Record<string, number>,
+  }
+}
+
+export function resolvePhraseWordThreshold(
+  config: AppConfig,
+  targetLang6391: string
+): number {
+  const thresholdConfig = config.app.phrase_word_threshold
+  const defaultThreshold = thresholdConfig?.default ?? 1
+  if (!thresholdConfig?.by_language) return defaultThreshold
+
+  const byLang = mapConfigLangRecord(thresholdConfig.by_language)
+  return byLang[targetLang6391] ?? defaultThreshold
+}
+
+export function isAccessAuthEnabled(config: AppConfig): boolean {
+  return !!config.auth?.access_totp_secret?.trim()
+}
+
+export function isRestartAuthEnabled(config: AppConfig): boolean {
+  return !!config.auth?.restart_totp_secret?.trim()
+}
+
+export function toPublicMeta(config: AppConfig, authenticated = false): PublicMeta {
   const providers = Object.entries(config.providers).map(([id, provider]) => ({
     id,
     type: provider.type,
@@ -129,5 +186,11 @@ export function toPublicMeta(config: AppConfig): PublicMeta {
     runtimeEnv: runtimeEnv || undefined,
     autoTranslateDelaySeconds: config.app.auto_translate_delay_seconds ?? 0,
     layoutBreakpoints: getLayoutBreakpoints(config),
+    authRequired: isAccessAuthEnabled(config),
+    restartAuthRequired: isRestartAuthEnabled(config),
+    authenticated,
+    translateOnEnter: config.app.translate_on_enter ?? false,
+    alternativesSeparators: getAlternativesSeparatorsMeta(config),
+    phraseWordThresholds: getPhraseWordThresholdsMeta(config),
   }
 }

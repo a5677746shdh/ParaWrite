@@ -134,6 +134,25 @@ export function extractSentenceByWord(
 
 export type SelectionGranularity = 'word' | 'clause' | 'sentence'
 
+export function normalizeClauseText(text: string): string {
+  return text.trim().replace(/^[,，、;；\s]+|[,，、;；]+$/g, '').trim()
+}
+
+export function resolveRephraseTarget(
+  word: string,
+  targetText: string,
+  targetLang: string,
+  granularity: SelectionGranularity
+): string {
+  if (granularity === 'sentence') {
+    return extractSentenceByWord(targetText, word, targetLang)
+  }
+  if (granularity === 'clause') {
+    return normalizeClauseText(word)
+  }
+  return normalizeClauseText(extractClauseByWord(targetText, word, targetLang))
+}
+
 export function detectSelectionGranularity(
   selectedText: string,
   fullText: string
@@ -145,9 +164,66 @@ export function detectSelectionGranularity(
   if (sentences.some((s) => s.trim() === trimmed)) return 'sentence'
 
   const clauses = splitIntoClauses(fullText)
-  if (clauses.some((c) => c.trim() === trimmed)) return 'clause'
+  if (clauses.some((c) => normalizeClauseText(c) === normalizeClauseText(trimmed))) {
+    return 'clause'
+  }
 
   return 'word'
+}
+
+export function countWordsInRange(
+  segments: TokenSegment[],
+  range: { start: number; end: number }
+): number {
+  return segments.filter(
+    (s) => s.isWord && s.index >= range.start && s.index <= range.end
+  ).length
+}
+
+export function combineTextFromRange(
+  segments: TokenSegment[],
+  range: { start: number; end: number }
+): string {
+  return segments
+    .filter((s) => s.index >= range.start && s.index <= range.end)
+    .map((s) => s.text)
+    .join('')
+}
+
+export function extendWordRange(
+  range: { start: number; end: number },
+  wordIndex: number
+): { start: number; end: number } {
+  return {
+    start: Math.min(range.start, wordIndex),
+    end: Math.max(range.end, wordIndex),
+  }
+}
+
+export function isWordInRange(
+  wordIndex: number,
+  range: { start: number; end: number }
+): boolean {
+  return wordIndex >= range.start && wordIndex <= range.end
+}
+
+export function isAdjacentWordToRange(
+  segments: TokenSegment[],
+  wordIndex: number,
+  range: { start: number; end: number }
+): boolean {
+  const words = segments.filter((s) => s.isWord)
+  const positionByIndex = new Map(words.map((w, i) => [w.index, i]))
+  const clickedPos = positionByIndex.get(wordIndex)
+  if (clickedPos === undefined) return false
+
+  const rangeWords = words.filter((w) => w.index >= range.start && w.index <= range.end)
+  if (rangeWords.length === 0) return false
+
+  const firstPos = positionByIndex.get(rangeWords[0].index)!
+  const lastPos = positionByIndex.get(rangeWords[rangeWords.length - 1].index)!
+
+  return clickedPos === firstPos - 1 || clickedPos === lastPos + 1
 }
 
 export function findTokenRangeForText(
@@ -171,14 +247,22 @@ export function findTokenRangeForText(
   return null
 }
 
-export function splitAlternativesByPeriod(texts: string[]): string[] {
+export function splitAlternatives(
+  texts: string[],
+  separator: 'comma' | 'period' = 'comma'
+): string[] {
+  const pattern = separator === 'comma' ? /[,，、;；]+/ : /[。.!?！？]+/
   const result: string[] = []
   for (const text of texts) {
-    const parts = text.split(/[。.!?！？]+/).map((p) => p.trim()).filter(Boolean)
+    const parts = text.split(pattern).map((p) => p.trim()).filter(Boolean)
     if (parts.length === 0) continue
     result.push(...parts)
   }
   return [...new Set(result)]
+}
+
+export function splitAlternativesByPeriod(texts: string[]): string[] {
+  return splitAlternatives(texts, 'period')
 }
 
 export function resolveLayoutMode(

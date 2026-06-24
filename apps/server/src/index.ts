@@ -1,18 +1,20 @@
 import { serve } from '@hono/node-server'
 import { createApp } from './app.js'
-import { BUILD_VERSION, loadConfig } from '@parawrite/core'
+import { BUILD_VERSION, findConfigPath, loadConfig } from '@parawrite/core'
 
 const startedAt = new Date()
 
 let config
+let configPath: string
 try {
-  config = loadConfig()
+  configPath = findConfigPath()
+  config = loadConfig(configPath)
 } catch (error) {
   console.error('Failed to load config:', error)
   process.exit(1)
 }
 
-const app = createApp(config)
+const app = createApp(config, configPath)
 
 serve(
   {

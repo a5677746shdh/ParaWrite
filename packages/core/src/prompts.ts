@@ -3,13 +3,20 @@ import { getLangName } from './types.js'
 export function buildTranslatePrompt(
   text: string,
   sourceLang: string,
-  targetLang: string
+  targetLang: string,
+  glossarySection?: string
 ): { system: string; user: string } {
   const sourceName = sourceLang === 'auto' ? 'the source language' : getLangName(sourceLang)
   const targetName = getLangName(targetLang)
 
+  let system =
+    'You are a professional translator. Translate accurately and naturally. Output only the translation without explanations or notes.'
+  if (glossarySection?.trim()) {
+    system += `\n\n${glossarySection.trim()}`
+  }
+
   return {
-    system: `You are a professional translator. Translate accurately and naturally. Output only the translation without explanations or notes.`,
+    system,
     user: `Translate the following text from ${sourceName} to ${targetName}. Return only the translation:\n\n${text}`,
   }
 }
@@ -35,7 +42,7 @@ Provide 3-5 synonyms that fit this context. Keep notes concise.`,
 }
 
 export function buildRephrasePrompt(
-  sentence: string,
+  phrase: string,
   sourceText: string,
   fullTranslation: string,
   sourceLang: string,
@@ -47,10 +54,11 @@ export function buildRephrasePrompt(
     system: `You are a professional editor. Suggest alternative phrasings in ${targetName}. Respond with valid JSON only.`,
     user: `Source text: ${sourceText}
 Full translation: ${fullTranslation}
-Sentence to rephrase: ${sentence}
+Phrase to rephrase (rephrase ONLY this phrase — do not include any other part of the translation):
+"${phrase}"
 
 Return JSON: {"alternatives":[{"text":"...","style":"formal|neutral|concise"}]}
-Provide 2-3 alternatives preserving the original meaning.`,
+Provide 2-3 alternatives. Each alternative must replace ONLY the phrase above and must not contain content from other clauses or sentences in the translation.`,
   }
 }
 

@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import {
   detectSelectionGranularity,
+  detectTextLanguage,
   extractSentenceByWord,
   replaceTokenRange,
   resolveLayoutMode,
+  resolveRephraseTarget,
   segmentText,
-  splitAlternativesByPeriod,
+  splitAlternatives,
+  countWordsInRange,
+  type AlternativesSeparator,
   type LayoutMode,
+  type SelectionGranularity,
 } from '@parawrite/core/client'
 import {
   fetchDictionaryContext,
@@ -45,9 +50,11 @@ export function Translator() {
     synonyms,
     dictionary,
     rephraseOptions,
+    rephraseOriginalSentence,
     isPanelLoading,
     setSourceText,
     setTargetText,
+    setDetectedSourceLang,
     appendTargetText,
     setTranslating,
     setStreaming,
@@ -108,6 +115,21 @@ export function Translator() {
       window.removeEventListener('resize', updateLayout)
     }
   }, [breakpoints])
+
+  useEffect(() => {
+    if (sourceLang !== 'auto') return
+
+    if (!sourceText.trim()) {
+      setDetectedSourceLang(null)
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setDetectedSourceLang(detectTextLanguage(sourceText))
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [sourceText, sourceLang, setDetectedSourceLang])
 
   const handleTranslate = useCallback(async () => {
     if (!sourceText.trim() || !provider || !model) return
@@ -172,6 +194,29 @@ export function Translator() {
 
   handleTranslateRef.current = handleTranslate
 
+  const translateOnEnter = meta?.translateOnEnter ?? false
+
+  const handleSourceKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (translateOnEnter) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        void handleTranslate()
+      }
+      return
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault()
+      void handleTranslate()
+    }
+  }
+
+  const resolveAlternativesSeparator = (): AlternativesSeparator => {
+    const separators = meta?.alternativesSeparators
+    if (!separators) return 'comma'
+    return separators.byLanguage[targetLang] ?? separators.default ?? 'comma'
+  }
+
   useEffect(() => {
     const delay = meta?.autoTranslateDelaySeconds ?? 0
     if (autoTranslateTimer.current) {
@@ -199,22 +244,25 @@ export function Translator() {
     }
   }, [sourceText, meta?.autoTranslateDelaySeconds, provider, model])
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault()
-        handleTranslate()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleTranslate])
+  const selectedWordCount = useMemo(() => {
+    if (!selectedRange || !targetText) return 0
+    return countWordsInRange(segmentText(targetText, targetLang), selectedRange)
+  }, [selectedRange, targetText, targetLang])
+
+  const phraseWordThreshold = useMemo(() => {
+    const thresholds = meta?.phraseWordThresholds
+    if (!thresholds) return 1
+    return thresholds.byLanguage[targetLang] ?? thresholds.default
+  }, [meta?.phraseWordThresholds, targetLang])
+
+  const isPhraseSelection = selectedWordCount > phraseWordThreshold
 
   const loadWordData = async (
     word: string,
-    range: { start: number; end: number }
+    range: { start: number; end: number },
+    forcedGranularity?: SelectionGranularity
   ) => {
-    const granularity = detectSelectionGranularity(word, targetText)
+    const granularity = forcedGranularity ?? detectSelectionGranularity(word, targetText)
     setSelection(word, range, granularity)
     setPanelLoading(true)
     setSynonyms([])
@@ -222,21 +270,34 @@ export function Translator() {
     setRephraseOptions([])
 
     const sentence = extractSentenceByWord(targetText, word, targetLang)
+    const rephraseTarget = resolveRephraseTarget(
+      word,
+      targetText,
+      targetLang,
+      granularity
+    )
     const uiLang = i18n.language.startsWith('zh') ? 'zh' : 'en'
-    const skipDictionary = granularity === 'sentence'
+    const wordCount = countWordsInRange(segmentText(targetText, targetLang), range)
+    const threshold =
+      meta?.phraseWordThresholds?.byLanguage[targetLang] ??
+      meta?.phraseWordThresholds?.default ??
+      1
+    const isPhrase = wordCount > threshold
 
     try {
       const [syns, dict, rephrase] = await Promise.all([
-        fetchSynonyms({
-          word,
-          sentence,
-          sourceText,
-          sourceLang,
-          targetLang,
-          provider,
-          model,
-        }),
-        skipDictionary
+        isPhrase
+          ? Promise.resolve([])
+          : fetchSynonyms({
+              word,
+              sentence,
+              sourceText,
+              sourceLang,
+              targetLang,
+              provider,
+              model,
+            }),
+        isPhrase
           ? Promise.resolve(null)
           : fetchDictionaryContext({
               word,
@@ -249,7 +310,7 @@ export function Translator() {
               model,
             }),
         fetchRephrase({
-          sentence,
+          sentence: rephraseTarget,
           sourceText,
           fullTranslation: targetText,
           sourceLang,
@@ -260,13 +321,33 @@ export function Translator() {
       ])
       setSynonyms(syns)
       setDictionary(dict)
-      const splitTexts = splitAlternativesByPeriod(rephrase.map((r) => r.text))
-      setRephraseOptions(splitTexts.map((text) => ({ text })))
+      const rephraseTexts =
+        granularity === 'sentence'
+          ? splitAlternatives(
+              rephrase.map((r) => r.text),
+              resolveAlternativesSeparator()
+            )
+          : rephrase.map((r) => r.text.trim()).filter(Boolean)
+      setRephraseOptions(
+        [...new Set(rephraseTexts)].map((text) => ({ text })),
+        rephraseTarget
+      )
     } catch (err) {
       setError((err as Error).message)
     } finally {
       setPanelLoading(false)
     }
+  }
+
+  const handleConsecutiveWordSelect = (word: string, range: { start: number; end: number }) => {
+    void loadWordData(word, range, 'word')
+  }
+
+  const clearSelection = () => {
+    setSelection(null, null)
+    setSynonyms([])
+    setDictionary(null)
+    setRephraseOptions([])
   }
 
   const applySynonym = (replacement: string) => {
@@ -285,18 +366,24 @@ export function Translator() {
 
   const applyRephrase = (text: string) => {
     if (!selectedWord) return
-    const sentence = extractSentenceByWord(targetText, selectedWord, targetLang)
-    const newText = targetText.replace(sentence, text)
+    const granularity = selectionGranularity ?? 'word'
+    const replaceTarget = resolveRephraseTarget(
+      selectedWord,
+      targetText,
+      targetLang,
+      granularity
+    )
+    const newText = targetText.replace(replaceTarget, text)
     setTargetText(newText === targetText ? text : newText)
     setRephraseOptions([])
     setSelection(null, null)
   }
 
   const copyText = async () => {
-    if (!targetText) return
+    if (!targetText || copied) return
     await navigator.clipboard.writeText(targetText)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setTimeout(() => setCopied(false), 1000)
   }
 
   const speak = () => {
@@ -327,6 +414,7 @@ export function Translator() {
         <textarea
           value={sourceText}
           onChange={(e) => setSourceText(e.target.value)}
+          onKeyDown={handleSourceKeyDown}
           placeholder={t('sourcePlaceholder')}
           rows={Math.max(3, sourceText.split('\n').length)}
           className="h-full min-h-[6rem] w-full resize-none border-0 bg-transparent text-lg leading-relaxed text-deepl-blue outline-none [field-sizing:content]"
@@ -363,7 +451,9 @@ export function Translator() {
           lang={targetLang}
           isStreaming={isStreaming}
           selectedRange={selectedRange}
+          selectionGranularity={selectionGranularity}
           onTokenClick={loadWordData}
+          onConsecutiveWordSelect={handleConsecutiveWordSelect}
           onPhraseSelect={loadWordData}
           placeholder={t('targetPlaceholder')}
         />
@@ -371,13 +461,60 @@ export function Translator() {
       <div className={paneFooterClass}>
         <TextStats text={targetText} lang={targetLang} />
         <div className="flex shrink-0 gap-2">
+          {selectedWordCount >= 2 && (
+            <button
+              type="button"
+              onClick={clearSelection}
+              title={t('clearSelection')}
+              aria-label={t('clearSelection')}
+              className="flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-deepl-border bg-white hover:bg-deepl-light"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+            </button>
+          )}
           <button
             type="button"
             onClick={copyText}
-            disabled={!targetText}
-            className="rounded-lg border border-deepl-border bg-white px-3 py-1.5 text-sm hover:bg-deepl-light disabled:opacity-50"
+            disabled={!targetText || copied}
+            title={copied ? t('copied') : t('copy')}
+            aria-label={copied ? t('copied') : t('copy')}
+            className={clsx(
+              'flex h-[34px] min-w-[54px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50',
+              copied
+                ? 'border-green-200 bg-green-50 text-green-600'
+                : 'border-deepl-border bg-white hover:bg-deepl-light'
+            )}
           >
-            {copied ? t('copied') : t('copy')}
+            {copied ? (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            ) : (
+              t('copy')
+            )}
           </button>
           <button
             type="button"
@@ -411,10 +548,12 @@ export function Translator() {
 
   const wordPanelProps = {
     selectedWord,
-    selectionGranularity,
     synonyms,
     dictionary,
     rephraseOptions,
+    rephraseOriginalSentence,
+    targetLang,
+    isPhraseSelection,
     isLoading: isPanelLoading,
     onApplySynonym: applySynonym,
     onApplyRephrase: applyRephrase,

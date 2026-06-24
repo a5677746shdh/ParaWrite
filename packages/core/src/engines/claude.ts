@@ -1,6 +1,6 @@
 import type { ProviderConfig } from '../types.js'
 import type { ChatRequest } from '../types.js'
-import { collectStream, type IEngine } from './base.js'
+import { collectStream, type EngineFetch, type IEngine } from './base.js'
 
 interface ClaudeStreamEvent {
   type: string
@@ -8,7 +8,10 @@ interface ClaudeStreamEvent {
 }
 
 export class ClaudeEngine implements IEngine {
-  constructor(private readonly provider: ProviderConfig) {}
+  constructor(
+    private readonly provider: ProviderConfig,
+    private readonly proxiedFetch: EngineFetch
+  ) {}
 
   async *chatStream(req: ChatRequest): AsyncIterable<string> {
     const baseUrl = this.provider.base_url.replace(/\/$/, '')
@@ -18,7 +21,7 @@ export class ClaudeEngine implements IEngine {
     const systemMessage = req.messages.find((m) => m.role === 'system')?.content ?? ''
     const userMessages = req.messages.filter((m) => m.role !== 'system')
 
-    const response = await fetch(url, {
+    const response = await this.proxiedFetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

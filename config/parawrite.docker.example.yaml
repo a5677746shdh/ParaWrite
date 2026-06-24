@@ -7,6 +7,12 @@ app:
   default_model: deepseek-v4-flash
   auto_translate_delay_seconds: 3
   runtime_env: docker
+  translate_on_enter: false
+  alternatives_separator:
+    default: comma
+    by_language:
+      zho: period
+      jpn: period
   layout:
     three_column_min_width: 1280
     two_column_min_width: 768
@@ -25,3 +31,11 @@ dictionary:
   free_dictionary: true
   wiktionary: true
   llm_fallback: true
+
+glossary:
+  file: custom-dictionary.yaml
+
+auth:
+  access_totp_secret: ${ACCESS_TOTP_SECRET}
+  restart_totp_secret: ${RESTART_TOTP_SECRET}
+  session_ttl_hours: 24

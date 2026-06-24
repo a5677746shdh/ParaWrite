@@ -1,6 +1,6 @@
 import type { ProviderConfig } from '../types.js'
 import type { ChatRequest } from '../types.js'
-import { collectStream, type IEngine } from './base.js'
+import { collectStream, type EngineFetch, type IEngine } from './base.js'
 
 interface OpenAIStreamChunk {
   choices?: Array<{
@@ -10,11 +10,14 @@ interface OpenAIStreamChunk {
 }
 
 export class OpenAICompatibleEngine implements IEngine {
-  constructor(private readonly provider: ProviderConfig) {}
+  constructor(
+    private readonly provider: ProviderConfig,
+    private readonly proxiedFetch: EngineFetch
+  ) {}
 
   async *chatStream(req: ChatRequest): AsyncIterable<string> {
     const url = `${this.provider.base_url.replace(/\/$/, '')}/chat/completions`
-    const response = await fetch(url, {
+    const response = await this.proxiedFetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

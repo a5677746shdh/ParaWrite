@@ -11,6 +11,17 @@ app:
   default_model: gpt-4o-mini
   auto_translate_delay_seconds: 2
   runtime_env: dev
+  translate_on_enter: false
+  alternatives_separator:
+    default: comma
+    by_language:
+      zho: period
+      jpn: period
+  phrase_word_threshold:
+    default: 4
+    by_language:
+      zho: 5
+      jpn: 5
   layout:
     three_column_min_width: 1280
     two_column_min_width: 768
@@ -20,6 +31,9 @@ providers:
     type: openai_compatible
     base_url: https://api.openai.com/v1
     api_key: ${OPENAI_API_KEY}
+    # proxy:
+    #   url: http://user:password@127.0.0.1:7890
+    #   url: socks5://user:password@127.0.0.1:1080
     models:
       - id: gpt-4o-mini
         name: GPT-4o Mini
@@ -46,3 +60,11 @@ dictionary:
   free_dictionary: true
   wiktionary: true
   llm_fallback: true
+
+glossary:
+  file: custom-dictionary.yaml
+
+auth:
+  access_totp_secret: ${ACCESS_TOTP_SECRET}
+  restart_totp_secret: ${RESTART_TOTP_SECRET}
+  session_ttl_hours: 24

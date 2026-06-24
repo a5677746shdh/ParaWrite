@@ -1,18 +1,39 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Header } from './components/Header'
 import { Translator } from './components/Translator'
+import { AuthGate } from './components/AuthGate'
 import { fetchMeta } from './api'
 import { useTranslationStore } from './store'
 
 export default function App() {
   const setMeta = useTranslationStore((s) => s.setMeta)
   const setError = useTranslationStore((s) => s.setError)
+  const meta = useTranslationStore((s) => s.meta)
+  const [authenticated, setAuthenticated] = useState(false)
+
+  const loadMeta = () => {
+    fetchMeta()
+      .then((m) => {
+        setMeta(m)
+        if (!m.authRequired || m.authenticated) {
+          setAuthenticated(true)
+        }
+      })
+      .catch((err) => setError((err as Error).message))
+  }
 
   useEffect(() => {
-    fetchMeta()
-      .then(setMeta)
-      .catch((err) => setError((err as Error).message))
+    loadMeta()
   }, [setMeta, setError])
+
+  const handleAuthenticated = () => {
+    setAuthenticated(true)
+    loadMeta()
+  }
+
+  if (meta?.authRequired && !authenticated) {
+    return <AuthGate onAuthenticated={handleAuthenticated} />
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-deepl-light">

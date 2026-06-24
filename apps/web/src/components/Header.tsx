@@ -4,7 +4,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { useTranslationStore } from '../store'
 import { LanguageSelect } from './LanguageSelect'
 import { ResetDialog } from './ResetDialog'
-import { restartServer } from '../api'
 import appIcon from '../assets/app-icon.png'
 
 const PROVIDER_MODEL_SEP = '::'
@@ -15,10 +14,12 @@ const selectClass =
 function HeaderIconButton({
   onClick,
   title,
+  disabled = false,
   children,
 }: {
   onClick: () => void
   title: string
+  disabled?: boolean
   children: ReactNode
 }) {
   return (
@@ -29,9 +30,14 @@ function HeaderIconButton({
       <button
         type="button"
         onClick={onClick}
+        disabled={disabled}
         title={title}
         aria-label={title}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-deepl-border text-deepl-blue hover:bg-deepl-light"
+        className={
+          disabled
+            ? 'flex h-10 w-10 shrink-0 cursor-not-allowed items-center justify-center rounded-lg border border-deepl-border text-deepl-blue/30'
+            : 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-deepl-border text-deepl-blue hover:bg-deepl-light'
+        }
       >
         {children}
       </button>
@@ -85,6 +91,7 @@ export function Header() {
     meta,
     sourceLang,
     targetLang,
+    detectedSourceLang,
     provider,
     model,
     setSourceLang,
@@ -96,6 +103,7 @@ export function Header() {
       meta: s.meta,
       sourceLang: s.sourceLang,
       targetLang: s.targetLang,
+      detectedSourceLang: s.detectedSourceLang,
       provider: s.provider,
       model: s.model,
       setSourceLang: s.setSourceLang,
@@ -104,6 +112,8 @@ export function Header() {
       setProviderModel: s.setProviderModel,
     }))
   )
+
+  const canSwapLanguages = sourceLang !== 'auto' || Boolean(detectedSourceLang)
 
   const [resetOpen, setResetOpen] = useState(false)
   const [restartMessage, setRestartMessage] = useState<string | null>(null)
@@ -132,16 +142,9 @@ export function Header() {
     window.location.href = `${window.location.pathname}?_r=${Date.now()}`
   }
 
-  const handleRestartBackend = async () => {
-    try {
-      await restartServer()
-      setRestartMessage(t('restartBackendSuccess'))
-      setTimeout(() => setRestartMessage(null), 3000)
-      setResetOpen(false)
-    } catch {
-      setRestartMessage(t('restartBackendFailed'))
-      setTimeout(() => setRestartMessage(null), 3000)
-    }
+  const handleRestartSuccess = () => {
+    setRestartMessage(t('restartBackendSuccess'))
+    setTimeout(() => setRestartMessage(null), 3000)
   }
 
   return (
@@ -170,7 +173,11 @@ export function Header() {
               allowAuto
             />
 
-            <HeaderIconButton onClick={swapLanguages} title={t('swapLanguages')}>
+            <HeaderIconButton
+              onClick={swapLanguages}
+              title={t('swapLanguages')}
+              disabled={!canSwapLanguages}
+            >
               <SwapIcon />
             </HeaderIconButton>
 
@@ -231,9 +238,10 @@ export function Header() {
         open={resetOpen}
         version={meta?.version ?? '0.1.0'}
         runtimeEnv={meta?.runtimeEnv}
+        restartAuthRequired={meta?.restartAuthRequired}
         onClose={() => setResetOpen(false)}
         onReloadFrontend={handleReloadFrontend}
-        onRestartBackend={handleRestartBackend}
+        onRestartSuccess={handleRestartSuccess}
       />
     </>
   )

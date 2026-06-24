@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
+import { diffHighlight } from '@parawrite/core/client'
 import type {
   DictionaryEntry,
   RephraseOption,
-  SelectionGranularity,
   SynonymOption,
 } from '@parawrite/core/client'
 
@@ -10,24 +10,56 @@ interface WordPanelProps {
   mode: 'resident' | 'modal' | 'sheet'
   visible: boolean
   selectedWord: string | null
-  selectionGranularity: SelectionGranularity | null
   synonyms: SynonymOption[]
   dictionary: DictionaryEntry | null
   rephraseOptions: RephraseOption[]
+  rephraseOriginalSentence: string | null
+  targetLang: string
+  isPhraseSelection: boolean
   isLoading: boolean
   onApplySynonym: (word: string) => void
   onApplyRephrase: (text: string) => void
   onClose: () => void
 }
 
+function HighlightedAlternative({
+  original,
+  alternative,
+  lang,
+}: {
+  original: string
+  alternative: string
+  lang: string
+}) {
+  const parts = diffHighlight(original, alternative, lang)
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.highlight ? (
+          <mark
+            key={index}
+            className="rounded bg-amber-100 px-0.5 text-deepl-blue not-italic"
+          >
+            {part.text}
+          </mark>
+        ) : (
+          <span key={index}>{part.text}</span>
+        )
+      )}
+    </>
+  )
+}
+
 export function WordPanel({
   mode,
   visible,
   selectedWord,
-  selectionGranularity,
   synonyms,
   dictionary,
   rephraseOptions,
+  rephraseOriginalSentence,
+  targetLang,
+  isPhraseSelection,
   isLoading,
   onApplySynonym,
   onApplyRephrase,
@@ -40,9 +72,8 @@ export function WordPanel({
   const showHint = mode === 'resident' && !selectedWord && !isLoading
   const showClose = mode !== 'resident'
   const showDictionary =
-    selectionGranularity !== 'sentence' &&
-    !!dictionary &&
-    dictionary.meanings.length > 0
+    !isPhraseSelection && !!dictionary && dictionary.meanings.length > 0
+  const originalSentence = rephraseOriginalSentence ?? ''
 
   const content = (
     <div className="flex flex-col gap-4">
@@ -67,28 +98,30 @@ export function WordPanel({
         <p className="text-sm text-deepl-blue/60">{t('loading')}</p>
       ) : (
         <>
-          <section>
-            <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-deepl-blue/60">
-              {t('synonyms')}
-            </h4>
-            {synonyms.length === 0 ? (
-              <p className="text-sm text-deepl-blue/50">{t('noResults')}</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {synonyms.map((syn) => (
-                  <button
-                    key={syn.word}
-                    type="button"
-                    onClick={() => onApplySynonym(syn.word)}
-                    className="rounded-full border border-deepl-accent/30 bg-deepl-accent/10 px-3 py-1.5 text-sm hover:bg-deepl-accent/20"
-                    title={syn.note}
-                  >
-                    {syn.word}
-                  </button>
-                ))}
-              </div>
-            )}
-          </section>
+          {!isPhraseSelection && (
+            <section>
+              <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-deepl-blue/60">
+                {t('synonyms')}
+              </h4>
+              {synonyms.length === 0 ? (
+                <p className="text-sm text-deepl-blue/50">{t('noResults')}</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {synonyms.map((syn) => (
+                    <button
+                      key={syn.word}
+                      type="button"
+                      onClick={() => onApplySynonym(syn.word)}
+                      className="rounded-lg border border-deepl-accent/30 bg-deepl-accent/10 px-3 py-1.5 text-sm hover:bg-deepl-accent/20"
+                      title={syn.note}
+                    >
+                      {syn.word}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           {showDictionary && (
             <section>
@@ -131,7 +164,15 @@ export function WordPanel({
                       onClick={() => onApplyRephrase(opt.text)}
                       className="w-full rounded-lg border border-deepl-border px-3 py-2 text-left text-sm hover:border-deepl-accent hover:bg-deepl-light"
                     >
-                      {opt.text}
+                      {originalSentence ? (
+                        <HighlightedAlternative
+                          original={originalSentence}
+                          alternative={opt.text}
+                          lang={targetLang}
+                        />
+                      ) : (
+                        opt.text
+                      )}
                       {opt.style && (
                         <span className="ml-2 text-xs text-deepl-blue/50">{opt.style}</span>
                       )}

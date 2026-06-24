@@ -2,6 +2,29 @@
 
 All notable changes to ParaWrite are documented in this file.
 
+## [0.4.0] — 2026-06-25
+
+### Added
+- Custom glossary via `glossary.file` — prompt injection for domain-specific terms (ISO 639-2 keys)
+- Alternative expression diff highlighting — changed words/phrases highlighted in amber in the word panel
+- Consecutive word multi-select in target pane (click adjacent words to extend selection)
+- Per-provider proxy support (`proxy.url`) for HTTP, HTTPS, and SOCKS5 (with username/password)
+- `app.phrase_word_threshold` — hide synonyms/dictionary when selection exceeds word count (default + per-language via ISO 639-2)
+- `app.translate_on_enter` — optional Enter-to-translate in source pane (Shift+Enter for newline)
+- `app.alternatives_separator` — per-language comma/period splitting for alternative expressions (default: comma)
+- Optional TOTP authentication for app access (`auth.access_totp_secret`) and backend restart (`auth.restart_totp_secret`)
+- ISO 639-2 language code support in configuration files with runtime ISO 639-1 mapping
+- Client-side language detection (`franc`) for auto source language — enables correct language swap
+
+### Changed
+- Rephrase scope limited to selected clause/phrase instead of full sentence
+- Copy button shows green checkmark with 1 s cooldown
+- Auth and restart errors shown inline on buttons instead of separate error lines
+
+### Fixed
+- Language swap with auto source now exchanges detected language (A↔B) instead of moving `auto` to target
+- Swap button disabled when auto source language cannot be detected yet
+
 ## [0.3.1] — 2026-06-25
 
 ### Added

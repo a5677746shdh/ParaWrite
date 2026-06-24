@@ -1,6 +1,6 @@
 import type { ProviderConfig } from '../types.js'
 import type { ChatRequest } from '../types.js'
-import { collectStream, type IEngine } from './base.js'
+import { collectStream, type EngineFetch, type IEngine } from './base.js'
 
 interface OllamaStreamChunk {
   message?: { content?: string }
@@ -8,13 +8,16 @@ interface OllamaStreamChunk {
 }
 
 export class OllamaEngine implements IEngine {
-  constructor(private readonly provider: ProviderConfig) {}
+  constructor(
+    private readonly provider: ProviderConfig,
+    private readonly proxiedFetch: EngineFetch
+  ) {}
 
   async *chatStream(req: ChatRequest): AsyncIterable<string> {
     const baseUrl = this.provider.base_url.replace(/\/$/, '')
     const url = `${baseUrl}/api/chat`
 
-    const response = await fetch(url, {
+    const response = await this.proxiedFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

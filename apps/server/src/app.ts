@@ -2,16 +2,24 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { streamSSE } from 'hono/streaming'
 import { serveStatic } from '@hono/node-server/serve-static'
+import { getCookie, setCookie } from 'hono/cookie'
 import {
+  AuthManager,
   buildMessages,
   buildRephrasePrompt,
   buildSynonymsPrompt,
   buildTranslatePrompt,
   DictionaryService,
+  getConfigDir,
   getDefaultModel,
   getEngineForProvider,
+  GlossaryService,
+  isAccessAuthEnabled,
+  isRestartAuthEnabled,
   parseJsonResponse,
+  SESSION_COOKIE_NAME,
   toPublicMeta,
+  verifyTotp,
   type AppConfig,
   type RephraseOption,
   type SynonymOption,
@@ -22,21 +30,76 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-export function createApp(config: AppConfig): Hono {
+const PUBLIC_API_ROUTES = new Set(['/api/meta', '/api/auth/verify'])
+
+function isPublicApiRoute(pathname: string): boolean {
+  return PUBLIC_API_ROUTES.has(pathname)
+}
+
+export function createApp(config: AppConfig, configPath?: string): Hono {
   const dictionary = new DictionaryService(config)
+  const configDir = getConfigDir(configPath)
+  const glossary = GlossaryService.fromConfig(configDir, config.glossary?.file)
+  const authManager = new AuthManager(config.auth?.session_ttl_hours ?? 24)
+  const accessAuthEnabled = isAccessAuthEnabled(config)
+  const restartAuthEnabled = isRestartAuthEnabled(config)
+
   const app = new Hono()
 
   app.use(
     '*',
     cors({
       origin: '*',
+      credentials: true,
     })
   )
+
+  app.use('*', async (c, next) => {
+    if (!accessAuthEnabled) return next()
+
+    const pathname = new URL(c.req.url).pathname
+    if (pathname === '/health' || isPublicApiRoute(pathname)) {
+      return next()
+    }
+
+    if (pathname.startsWith('/api/')) {
+      const token = getCookie(c, SESSION_COOKIE_NAME)
+      if (!authManager.isValidSession(token)) {
+        return c.json({ error: 'Unauthorized' }, 401)
+      }
+    }
+
+    return next()
+  })
 
   app.get('/health', (c) => c.json({ status: 'ok' }))
 
   app.get('/api/meta', (c) => {
-    return c.json(toPublicMeta(config))
+    const token = getCookie(c, SESSION_COOKIE_NAME)
+    const authenticated = !accessAuthEnabled || authManager.isValidSession(token)
+    return c.json(toPublicMeta(config, authenticated))
+  })
+
+  app.post('/api/auth/verify', async (c) => {
+    if (!accessAuthEnabled) {
+      return c.json({ ok: true, authenticated: true })
+    }
+
+    const body = await c.req.json<{ code?: string }>()
+    const secret = config.auth?.access_totp_secret?.trim()
+    if (!secret || !body.code || !verifyTotp(secret, body.code)) {
+      return c.json({ error: 'Invalid code' }, 401)
+    }
+
+    const token = authManager.createSession()
+    setCookie(c, SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      sameSite: 'Strict',
+      path: '/',
+      maxAge: (config.auth?.session_ttl_hours ?? 24) * 60 * 60,
+    })
+
+    return c.json({ ok: true, authenticated: true })
   })
 
   app.post('/api/translate', async (c) => {
@@ -55,7 +118,20 @@ export function createApp(config: AppConfig): Hono {
     const provider = body.provider ?? config.app.default_provider
     const model = body.model ?? getDefaultModel(config, provider)
     const engine = getEngineForProvider(config, provider)
-    const prompt = buildTranslatePrompt(body.text, body.sourceLang, body.targetLang)
+
+    const relevantGlossary = glossary.findRelevant(body.text, body.sourceLang)
+    const glossarySection = glossary.buildPromptSection(
+      relevantGlossary,
+      body.text,
+      body.sourceLang,
+      body.targetLang
+    )
+    const prompt = buildTranslatePrompt(
+      body.text,
+      body.sourceLang,
+      body.targetLang,
+      glossarySection
+    )
 
     return streamSSE(c, async (stream) => {
       try {
@@ -167,7 +243,20 @@ export function createApp(config: AppConfig): Hono {
     }
   })
 
-  app.post('/api/admin/restart', (c) => {
+  app.post('/api/admin/restart', async (c) => {
+    if (restartAuthEnabled) {
+      let body: { totpCode?: string } = {}
+      try {
+        body = await c.req.json<{ totpCode?: string }>()
+      } catch {
+        body = {}
+      }
+      const secret = config.auth?.restart_totp_secret?.trim()
+      if (!secret || !body.totpCode || !verifyTotp(secret, body.totpCode)) {
+        return c.json({ error: 'Invalid restart code' }, 403)
+      }
+    }
+
     setTimeout(() => process.exit(0), 300)
     return c.json({ ok: true })
   })
