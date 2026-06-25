@@ -11,14 +11,16 @@ const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf-8')
 const version = pkg.version
 
 const BETA_DOCKERFILE = `FROM node:22-alpine
-RUN apk add --no-cache wget && corepack enable && corepack prepare pnpm@9.15.0 --activate
+RUN apk add --no-cache wget python3 make g++ \\
+  && corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/server/package.json ./apps/server/
 COPY packages/core/package.json ./packages/core/
-RUN pnpm install --prod --frozen-lockfile || pnpm install --prod
+RUN pnpm install --prod --frozen-lockfile || pnpm install --prod \\
+  && apk del python3 make g++
 
 COPY server-dist ./apps/server/dist
 COPY web-dist ./apps/web/dist

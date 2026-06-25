@@ -97,9 +97,95 @@ Stack rows with `space-y-1.5`.
 
 **Icon button (header)** — `h-10 w-10`
 
-**Icon button (translation footer)** — `h-[34px] w-[34px]` or `h-9 w-9` in history panel
+**Icon button (translation footer)** — `h-[34px] w-[34px]` or `h-9 w-9` in history panel (`paneIconButtonClass` in `apps/web/src/ui.ts`)
 
 **Destructive text** — `text-deepl-error hover:bg-deepl-error/10`
+
+## Button icons
+
+Button icons follow a single inline-SVG pattern. When you provide a reference file (usually under local `refer/`), apply this workflow — do **not** introduce separate icon packages, `assets/icons/`, or `components/icons/` unless explicitly requested.
+
+### Where icons live
+
+| Kind | Location | Examples |
+|------|----------|----------|
+| **UI button icons** | Inline `<svg>` inside the component that renders the button | Paste, clear, copy, speak in `Translator.tsx`; swap, settings in `Header.tsx` |
+| **App / PWA raster** | `apps/web/src/assets/` or `apps/web/public/` | `app-icon.png`, favicon, manifest icons |
+| **Design references** | `refer/` (gitignored, local only) | Affinity sources, Iconfont exports, drafts — **never edit these files in place** |
+
+Shared button **shell** classes live in `apps/web/src/ui.ts` (e.g. `paneIconButtonClass`, `paneClearIconClass`, `speakActiveButtonClass`). Icon **color** comes from those classes via `currentColor`, not hard-coded fills in the SVG.
+
+### Sizes
+
+| Context | SVG `width` / `height` | Button shell |
+|---------|------------------------|--------------|
+| Translation pane footer | `16` | `paneIconButtonClass` — `h-[34px] w-[34px]` |
+| Header toolbar | `18` | `h-10 w-10` (see `HeaderIcon` in `Header.tsx`) |
+| History panel | `18` | `h-9 w-9` |
+
+Keep the source `viewBox` from the reference file; only the rendered size changes.
+
+### Inline SVG template
+
+**Stroke icons** (Lucide-style, most footer icons):
+
+```tsx
+<svg
+  width="16"
+  height="16"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  strokeWidth="2"
+  strokeLinecap="round"
+  strokeLinejoin="round"
+  aria-hidden="true"
+>
+  <path d="…" />
+</svg>
+```
+
+**Fill icons** (Iconfont / `refer/` exports — e.g. clear brush):
+
+```tsx
+<svg
+  width="16"
+  height="16"
+  viewBox="0 0 1024 1024"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  aria-hidden="true"
+>
+  <path d="…" fill="currentColor" />
+</svg>
+```
+
+Rules:
+
+- Always `aria-hidden="true"` on decorative icons; put meaning on the `<button>` via `title` and `aria-label` (i18n keys in `apps/web/src/i18n.ts`).
+- Never commit hard-coded `#000` / `fill-opacity` from reference SVGs — use `currentColor` so Tailwind text classes control hue and opacity.
+- Strip Iconfont/XML boilerplate (`class`, `p-id`, `t=`, DOCTYPE); keep only `viewBox` and path data.
+
+### Updating an icon from a reference file
+
+1. Open the file you provide (e.g. `refer/Iconfont Clear.svg`) — **read only**; do not modify `refer/`.
+2. Copy the `<path d="…">` (and `viewBox` if non-standard) into the inline `<svg>` in the target component.
+3. Replace any fixed fill/stroke with `currentColor`.
+4. Use the same button shell class as sibling icons in that toolbar (footer icons share `paneIconButtonClass`).
+5. If the icon should look muted in one state, add a text utility on the **button** (e.g. `paneClearIconClass` = `text-deepl-blue/40`), not a different fill in the SVG.
+6. Do not add duplicate `.svg` files under `src/assets/` or wrapper components unless you explicitly ask for that.
+
+### State-specific icons
+
+Some buttons swap icon or style by state while keeping the same shell:
+
+| Button | Empty / idle | With content / active |
+|--------|----------------|------------------------|
+| Source pane action | Paste (clipboard stroke icon) | Clear (brush fill icon, `paneClearIconClass`) |
+| Copy | Clipboard | Checkmark + success colors on button |
+| Speak | Speaker | Active glow (`speakActiveButtonClass`) |
+
+New icons should follow the same pattern: one button element, shared shell class, state handled with `clsx` and conditional SVG children.
 
 ## Cards and overlays
 

@@ -24,14 +24,14 @@ import {
   saveHistory,
   streamTranslate,
 } from '../api'
-import { copyWithExecCommand, canUseClipboardApi } from '../clipboard'
+import { copyWithExecCommand, canReadClipboard, canUseClipboardApi, readFromClipboard } from '../clipboard'
 import { useAutoResizeTextarea } from '../hooks/useAutoResizeTextarea'
 import { useTranslationStore } from '../store'
 import { TextStats } from './TextStats'
 import { TokenEditor } from './TokenEditor'
 import { WordPanel } from './WordPanel'
 import { HistoryPanel } from './HistoryPanel'
-import { textButtonPx, paneIconButtonClass, speakActiveButtonClass, wordSelectionCancelButtonClass } from '../ui'
+import { textButtonPx, paneIconButtonClass, paneClearIconClass, speakActiveButtonClass, wordSelectionCancelButtonClass } from '../ui'
 
 /** Responsive breakpoints from meta.layout or defaults; drives three-column / modal / sheet word panel. */
 const DEFAULT_BREAKPOINTS = {
@@ -618,6 +618,21 @@ export function Translator() {
     if (copyWithExecCommand(textToCopy)) showCopied()
   }
 
+  const isSourceEmpty = !sourceText.trim()
+  const canPaste = canReadClipboard()
+
+  const handleSourcePaneAction = () => {
+    if (!isSourceEmpty) {
+      clear()
+      return
+    }
+    void readFromClipboard()
+      .then((text) => {
+        if (text) setSourceText(text)
+      })
+      .catch(() => {})
+  }
+
   const speak = () => {
     if (!('speechSynthesis' in window)) return
     if (isSpeaking) {
@@ -687,26 +702,42 @@ export function Translator() {
         <div className="flex shrink-0 gap-2">
           <button
             type="button"
-            onClick={clear}
-            title={t('clear')}
-            aria-label={t('clear')}
-            className={paneIconButtonClass}
+            onClick={handleSourcePaneAction}
+            disabled={isSourceEmpty && !canPaste}
+            title={isSourceEmpty ? t('paste') : t('clear')}
+            aria-label={isSourceEmpty ? t('paste') : t('clear')}
+            className={clsx(paneIconButtonClass, !isSourceEmpty && paneClearIconClass)}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
-              <line x1="18" y1="9" x2="12" y2="15" />
-              <line x1="12" y1="9" x2="18" y2="15" />
-            </svg>
+            {isSourceEmpty ? (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="9" y="2" width="6" height="4" rx="1" />
+                <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
+              </svg>
+            ) : (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 1024 1024"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M448 256h128V128H448v128z m192-128v128h192a64 64 0 0 1 64 64v128a64 64 0 0 1-54.976 63.36l44.544 311.616a64 64 0 0 1-63.36 73.024H201.792a64 64 0 0 1-63.36-73.024L183.04 511.36A64 64 0 0 1 128 448V320a64 64 0 0 1 64-64h192V128a64 64 0 0 1 64-64h128a64 64 0 0 1 64 64z m136.512 320H832V320H192v128h584.512z m0 64H247.488l-45.696 320H320v-128h64v128h96v-128h64v128H640v-128h64v128h118.208l-45.696-320z"
+                  fill="currentColor"
+                />
+              </svg>
+            )}
           </button>
           <button
             type="button"

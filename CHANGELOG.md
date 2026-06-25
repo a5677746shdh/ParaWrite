@@ -4,6 +4,17 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [0.6.2] — 2026-06-26
+
+### Added
+- Source pane paste button when empty; clear (brush icon) when text is present
+- Clipboard read helpers for paste (`canReadClipboard`, `readFromClipboard`)
+- Button icon conventions in `docs/UI-DESIGN.md` (inline SVG, `refer/` workflow)
+
+### Changed
+- Document `refer/` and other local-only directories; do not delete during workspace cleanup
+- Beta and production Dockerfiles: Alpine build deps for `better-sqlite3` on ARM64 when prebuild download fails
+
 ## [0.6.1] — 2026-06-25
 
 ### Added

@@ -42,10 +42,11 @@ Examples:
 - TypeScript strict mode; match surrounding naming and patterns.
 - Prefer extending `@parawrite/core` over duplicating logic in web or server.
 - Comments: module-level purpose and non-obvious business rules only — avoid narrating obvious code.
+- **Button icons:** inline SVG in the using component; reference files from `refer/` are read-only sources. See [docs/UI-DESIGN.md — Button icons](docs/UI-DESIGN.md#button-icons).
 
 ## Security
 
-Do not commit API keys, `config/parawrite.yaml`, or database files. Report vulnerabilities per [SECURITY.md](SECURITY.md).
+Do not commit API keys, `config/parawrite.yaml`, database files, or the local `refer/` reference library. Report vulnerabilities per [SECURITY.md](SECURITY.md).
 
 ## Questions
 

@@ -3,6 +3,7 @@ RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
 FROM base AS deps
+RUN apk add --no-cache python3 make g++
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
 COPY apps/web/package.json ./apps/web/
 COPY apps/server/package.json ./apps/server/

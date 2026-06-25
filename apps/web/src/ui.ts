@@ -5,6 +5,9 @@ export const textButtonPx = 'px-6'
 export const paneIconButtonClass =
   'flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-deepl-border bg-white hover:bg-deepl-light disabled:opacity-50'
 
+/** Source pane muted clear icon when text is present. */
+export const paneClearIconClass = 'text-deepl-blue/40'
+
 /** Translation pane footer outline accent text button (e.g. manual lookup). */
 export const paneOutlineAccentButtonClass =
   'flex h-[34px] shrink-0 items-center justify-center rounded-lg border border-deepl-accent bg-white text-sm text-deepl-accent hover:bg-deepl-accent/10 disabled:opacity-50'

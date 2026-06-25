@@ -4,7 +4,7 @@
 
 ParaWrite 是一款开源写作辅助工具，灵感来自 DeepL 的「替代译文」功能。通过可配置的 LLM API 进行流式翻译，并支持上下文同义词、词典释义与句子改写。
 
-**版本 0.6.1** — 详见 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)（英文：[CHANGELOG.md](CHANGELOG.md)）。
+**版本 0.6.2** — 详见 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)（英文：[CHANGELOG.md](CHANGELOG.md)）。
 
 ## 界面展示
 

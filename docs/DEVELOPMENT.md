@@ -33,13 +33,24 @@ pnpm dev
 - **server:** `dev` (`tsx watch`), `build` (`tsc`), `start` (`node dist/index.js`)
 - **core:** `dev` (`tsc --watch`), `build` (`tsc`)
 
+## Local-only directories
+
+These paths are listed in `.gitignore`. They are **not** part of the published repo but should **stay on your machine** — do not delete them during workspace cleanup.
+
+| Path | Purpose |
+|------|---------|
+| `refer/` | Project reference library (design sources, Affinity `.af` files, icon drafts). Shipped assets live under `apps/web/public/` and `apps/web/src/assets/`. |
+| `artifacts/` | Output of `pnpm package:beta` — safe to delete and regenerate |
+| `ai-memory/` | Optional local AI session notes |
+| `config/parawrite.yaml` | Local secrets and overrides |
+
 ## Project conventions
 
 - **TypeScript** strict mode; ESM throughout (`"type": "module"`)
 - **Imports** in server/core use `.js` extensions for Node ESM resolution
 - **Shared types** live in `packages/core`; web imports browser-safe exports from `@parawrite/core/client`
 - **Config paths** in YAML resolve relative to the app root (parent of `config/`)
-- **Styling:** Tailwind CSS with `deepl-*` semantic tokens; see [UI-DESIGN.md](UI-DESIGN.md)
+- **Styling:** Tailwind CSS with `deepl-*` semantic tokens; see [UI-DESIGN.md](UI-DESIGN.md) (including [button icons](UI-DESIGN.md#button-icons))
 
 ## Adding a provider
 

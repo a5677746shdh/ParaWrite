@@ -8,6 +8,17 @@ export function canUseClipboardApi(): boolean {
   )
 }
 
+export function canReadClipboard(): boolean {
+  return canUseClipboardApi() && typeof navigator.clipboard!.readText === 'function'
+}
+
+export function readFromClipboard(): Promise<string> {
+  if (!canReadClipboard()) {
+    return Promise.reject(new Error('Clipboard read unavailable'))
+  }
+  return navigator.clipboard!.readText()
+}
+
 export function copyWithExecCommand(text: string): boolean {
   const textarea = document.createElement('textarea')
   textarea.value = text

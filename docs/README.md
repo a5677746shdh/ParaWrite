@@ -9,7 +9,7 @@ Technical documentation for ParaWrite. For a quick overview, see the [main READM
 3. **[API.md](API.md)** — HTTP endpoints and streaming translation protocol
 4. **[DEPLOYMENT.md](DEPLOYMENT.md)** — Docker, beta artifacts, and environment variables
 5. **[DEVELOPMENT.md](DEVELOPMENT.md)** — Local setup, scripts, and contribution workflow
-6. **[UI-DESIGN.md](UI-DESIGN.md)** — Visual tokens, layout breakpoints, and screenshots
+6. **[UI-DESIGN.md](UI-DESIGN.md)** — Visual tokens, layout breakpoints, button icons, and screenshots
 
 ## Other references
 
