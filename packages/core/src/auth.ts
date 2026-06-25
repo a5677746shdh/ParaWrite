@@ -1,3 +1,7 @@
+/**
+ * Deployment access auth: TOTP verification and in-memory session tokens.
+ * Separate from user login (UserSessionManager in apps/server).
+ */
 import { randomBytes } from 'node:crypto'
 import { authenticator } from 'otplib'
 

@@ -24,6 +24,7 @@ import {
   streamTranslate,
 } from '../api'
 import { copyWithExecCommand, canUseClipboardApi } from '../clipboard'
+import { useAutoResizeTextarea } from '../hooks/useAutoResizeTextarea'
 import { useTranslationStore } from '../store'
 import { TextStats } from './TextStats'
 import { TokenEditor } from './TokenEditor'
@@ -31,6 +32,7 @@ import { WordPanel } from './WordPanel'
 import { HistoryPanel } from './HistoryPanel'
 import { textButtonPx } from '../ui'
 
+/** Responsive breakpoints from meta.layout or defaults; drives three-column / modal / sheet word panel. */
 const DEFAULT_BREAKPOINTS = {
   threeColumnMinWidth: 1280,
   twoColumnMinWidth: 768,
@@ -135,6 +137,7 @@ export function Translator() {
   const onStreamChunk = useCallback(
     (chunk: string) => {
       streamBufferRef.current += chunk
+      // Batch DOM updates to one append per animation frame during SSE streaming.
       if (streamRafRef.current === null) {
         streamRafRef.current = requestAnimationFrame(() => {
           streamRafRef.current = null
@@ -341,6 +344,7 @@ export function Translator() {
     range: { start: number; end: number },
     forcedGranularity?: SelectionGranularity
   ) => {
+    // Cancel in-flight synonym/dictionary/rephrase requests when the user selects another word.
     panelAbortRef.current?.abort()
     const controller = new AbortController()
     panelAbortRef.current = controller
@@ -500,8 +504,14 @@ export function Translator() {
   const panelMode = isThreeColumn ? 'resident' : isStacked ? 'sheet' : 'modal'
   const panelVisible = isThreeColumn || !!selectedWord || isPanelLoading
 
-  const paneClass = 'relative flex h-full min-h-0 w-full min-w-0 flex-col p-4'
-  const paneFooterClass = 'mt-auto flex w-full items-center justify-between gap-3 pt-3'
+  const sourceTextareaRef = useAutoResizeTextarea(sourceText)
+
+  const paneClass = clsx(
+    'relative flex w-full min-w-0 flex-col p-4',
+    !isStacked && 'h-full min-h-0'
+  )
+  const paneContentClass = clsx('w-full', !isStacked && 'min-h-[6rem] flex-1')
+  const paneFooterClass = 'mt-auto shrink-0 flex w-full items-center justify-between gap-3 pt-3'
 
   const sourcePane = (
     <section
@@ -510,14 +520,14 @@ export function Translator() {
         isStacked && 'border-b border-deepl-border'
       )}
     >
-      <div className="min-h-[6rem] w-full flex-1">
+      <div className={paneContentClass}>
         <textarea
+          ref={sourceTextareaRef}
           value={sourceText}
           onChange={(e) => setSourceText(e.target.value)}
           onKeyDown={handleSourceKeyDown}
           placeholder={t('sourcePlaceholder')}
-          rows={Math.max(3, sourceText.split('\n').length)}
-          className="h-full min-h-[6rem] w-full resize-none border-0 bg-transparent text-lg leading-relaxed text-deepl-blue outline-none [field-sizing:content]"
+          className="block min-h-[6rem] w-full resize-none overflow-hidden border-0 bg-transparent text-lg leading-relaxed text-deepl-blue outline-none"
         />
       </div>
       <div className={paneFooterClass}>
@@ -545,7 +555,7 @@ export function Translator() {
 
   const targetPane = (
     <section className={paneClass}>
-      <div className="min-h-[6rem] w-full flex-1">
+      <div className={paneContentClass}>
         <TokenEditor
           text={targetText}
           lang={targetLang}
@@ -633,7 +643,7 @@ export function Translator() {
   )
 
   const translationCard = (
-    <div className="w-full overflow-hidden rounded-2xl border border-deepl-border bg-white shadow-sm">
+    <div className="w-full rounded-2xl border border-deepl-border bg-white shadow-sm">
       <div
         className={clsx(
           'grid w-full items-stretch',

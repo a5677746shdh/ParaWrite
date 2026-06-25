@@ -1,3 +1,7 @@
+/**
+ * LLM engine interface and shared chat helpers.
+ * Concrete engines (OpenAI-compatible, Claude, Ollama) implement IEngine.
+ */
 import type { ChatMessage, ChatRequest } from '../types.js'
 import type { EngineFetch } from '../proxy-fetch.js'
 

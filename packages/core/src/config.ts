@@ -1,3 +1,8 @@
+/**
+ * YAML configuration loader and public metadata builder.
+ * Resolves ${ENV_VAR} placeholders, theme defaults, and path helpers (app root, data dir).
+ * Only non-secret fields are exposed via toPublicMeta() for the /api/meta endpoint.
+ */
 import fs from 'node:fs'
 import path from 'node:path'
 import yaml from 'js-yaml'
@@ -55,6 +60,7 @@ function resolveConfigValues<T>(obj: T): T {
 }
 
 export function findConfigPath(): string {
+  // PARWRITE_CONFIG → cwd/config/parawrite.yaml → cwd/config/parawrite.docker.yaml
   const candidates = [
     process.env.PARWRITE_CONFIG,
     path.resolve(process.cwd(), 'config/parawrite.yaml'),

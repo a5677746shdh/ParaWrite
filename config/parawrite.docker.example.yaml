@@ -40,6 +40,9 @@ dictionary:
 glossary:
   file: config/custom-dictionary.yaml
 
+pwa:
+  assetlinks_file: config/assetlinks.json
+
 auth:
   access_totp_secret: ${ACCESS_TOTP_SECRET}
   restart_totp_secret: ${RESTART_TOTP_SECRET}

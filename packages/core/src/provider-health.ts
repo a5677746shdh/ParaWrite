@@ -1,3 +1,8 @@
+/**
+ * Startup model availability checks (non-blocking).
+ * Lists models from each provider when possible; falls back to a minimal chat probe.
+ * Runs after serve() so HTTP is available immediately.
+ */
 import type { AppConfig, ProviderConfig, ProviderType } from './types.js'
 import { createProxiedFetch, type EngineFetch } from './proxy-fetch.js'
 

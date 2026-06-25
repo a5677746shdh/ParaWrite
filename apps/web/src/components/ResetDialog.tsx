@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import { restartServer, logoutUser } from '../api'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { textButtonPx } from '../ui'
 
 function formatVersionDisplay(version: string, runtimeEnv?: string): string {
@@ -45,6 +46,8 @@ export function ResetDialog({
   const [restartError, setRestartError] = useState(false)
   const [restarting, setRestarting] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+
+  useBodyScrollLock(open)
 
   if (!open) return null
 
@@ -105,12 +108,12 @@ export function ResetDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center overscroll-none bg-black/30 p-4"
       onClick={handleClose}
       role="presentation"
     >
       <div
-        className="w-full max-w-sm rounded-xl bg-deepl-surface p-5 shadow-xl"
+        className="max-h-[85vh] w-full max-w-sm touch-pan-y overflow-y-auto overscroll-contain rounded-xl bg-deepl-surface p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-center text-lg font-semibold text-deepl-blue">

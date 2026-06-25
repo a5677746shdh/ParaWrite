@@ -2,6 +2,27 @@
 
 All notable changes to ParaWrite are documented in this file.
 
+## [Unreleased]
+
+## [0.6.0] — 2026-06-25
+
+### Added
+- English technical docs under `docs/` (architecture, configuration, API, deployment, development)
+- Chinese README (`README.zh-CN.md`)
+- PWA manifest screenshots and `display_override` for install UI
+- Android TWA support: `config/assetlinks.json` served at `/.well-known/assetlinks.json`
+- `.env.example`, CI workflow, CONTRIBUTING.md, SECURITY.md, Issue/PR templates
+
+### Changed
+- README slimmed to intro, quick start, and documentation index
+- UI screenshots renamed to English in `docs/snapshots/`
+- Module-level comments on core, server, and web entry points
+- PWA `theme_color` matches white header surface (Android TWA status bar)
+
+### Fixed
+- Modal/sheet scroll no longer propagates to the page behind (body scroll lock)
+- iOS Safari: source and target pane auto-height for stacked mobile layout
+
 ## [0.5.2] — 2026-06-25
 
 ### Changed

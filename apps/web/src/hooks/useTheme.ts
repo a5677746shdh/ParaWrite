@@ -19,6 +19,8 @@ export function applyTheme(theme: ThemeColors): void {
   for (const [key, cssVar] of Object.entries(CSS_VAR_MAP)) {
     root.style.setProperty(cssVar, theme[key as keyof ThemeColors])
   }
+  // Android TWA / PWA status bar — match header surface color
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.surface)
 }
 
 export function useTheme(theme: ThemeColors | undefined): void {

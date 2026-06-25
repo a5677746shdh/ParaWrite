@@ -1,3 +1,7 @@
+/**
+ * Hybrid dictionary: Free Dictionary API → Wiktionary → LLM fallback.
+ * Module-level LRU cache (500 entries, 1h TTL) keys on lang:word.
+ */
 import { LRUCache } from 'lru-cache'
 import type { AppConfig, DictionaryEntry } from './types.js'
 import { buildDictionaryContextPrompt, parseJsonResponse } from './prompts.js'

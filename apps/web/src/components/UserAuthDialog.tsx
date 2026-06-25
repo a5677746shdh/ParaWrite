@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import { loginUser, registerUser } from '../api'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { textButtonPx } from '../ui'
 
 interface UserAuthDialogProps {
@@ -29,6 +30,8 @@ export function UserAuthDialog({
   const [loading, setLoading] = useState(false)
 
   const sessionTtlDays = Math.floor(sessionTtlHours / 24)
+
+  useBodyScrollLock(open)
 
   if (!open) return null
 
@@ -73,12 +76,12 @@ export function UserAuthDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center overscroll-none bg-black/30 p-4"
       onClick={handleClose}
       role="presentation"
     >
       <div
-        className="w-full max-w-sm rounded-xl bg-deepl-surface p-5 shadow-xl"
+        className="max-h-[85vh] w-full max-w-sm touch-pan-y overflow-y-auto overscroll-contain rounded-xl bg-deepl-surface p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-semibold text-deepl-blue">{t('userAuthTitle')}</h2>

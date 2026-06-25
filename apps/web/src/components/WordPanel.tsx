@@ -8,6 +8,7 @@ import type {
   SynonymOption,
 } from '@parawrite/core/client'
 import { textButtonPx, optionChipClass, optionListButtonClass } from '../ui'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 interface WordPanelProps {
   mode: 'resident' | 'modal' | 'sheet'
@@ -72,6 +73,8 @@ export function WordPanel({
   onClose,
 }: WordPanelProps) {
   const { t } = useTranslation()
+  const isOverlay = mode !== 'resident' && visible
+  useBodyScrollLock(isOverlay)
 
   if (mode !== 'resident' && !visible) return null
 
@@ -196,12 +199,12 @@ export function WordPanel({
   if (mode === 'sheet') {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-end bg-black/30"
+        className="fixed inset-0 z-50 flex items-end overscroll-none bg-black/30"
         onClick={onClose}
         role="presentation"
       >
         <div
-          className="flex max-h-[70vh] w-full flex-col gap-4 overflow-y-auto rounded-t-2xl bg-white p-4 shadow-xl"
+          className="flex max-h-[70vh] w-full touch-pan-y flex-col gap-4 overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-4 shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
           {panelBody}
@@ -213,12 +216,12 @@ export function WordPanel({
   if (mode === 'modal') {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center overscroll-none bg-black/30 p-4"
         onClick={onClose}
         role="presentation"
       >
         <div
-          className="flex max-h-[80vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-xl bg-white p-4 shadow-xl"
+          className="flex max-h-[80vh] w-full max-w-md touch-pan-y flex-col gap-4 overflow-y-auto overscroll-contain rounded-xl bg-white p-4 shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
           {panelBody}

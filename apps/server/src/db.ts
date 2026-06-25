@@ -1,3 +1,7 @@
+/**
+ * SQLite schema for users and translation history.
+ * Index on (user_id, created_at DESC) supports paginated history queries.
+ */
 import Database from 'better-sqlite3'
 import fs from 'node:fs'
 import path from 'node:path'

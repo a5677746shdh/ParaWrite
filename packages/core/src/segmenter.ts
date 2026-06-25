@@ -1,3 +1,7 @@
+/**
+ * Text segmentation for word-level interaction in the target pane.
+ * Uses Intl.Segmenter when available (cached per locale); clause/sentence splits use punctuation rules.
+ */
 import type { TokenSegment } from './types.js'
 
 type IntlSegmenter = {

@@ -1,3 +1,7 @@
+/**
+ * Hono application: API routes, optional auth gates, SSE translation, static web dist.
+ * Middleware order: CORS → access TOTP gate → route handlers → serveStatic (production).
+ */
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { streamSSE } from 'hono/streaming'
@@ -22,6 +26,9 @@ import {
   isUserLoginEnabled,
   parseJsonResponse,
   resolveDataDir,
+  ASSETLINKS_SERVE_PATH,
+  resolveAssetLinksPath,
+  loadAssetLinksFile,
   SESSION_COOKIE_NAME,
   toPublicMeta,
   verifyTotp,
@@ -115,7 +122,11 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
     if (!accessAuthEnabled) return next()
 
     const pathname = new URL(c.req.url).pathname
-    if (pathname === '/health' || isPublicApiRoute(pathname)) {
+    if (
+      pathname === '/health' ||
+      pathname === ASSETLINKS_SERVE_PATH ||
+      isPublicApiRoute(pathname)
+    ) {
       return next()
     }
 
@@ -130,6 +141,18 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
   })
 
   app.get('/health', (c) => c.json({ status: 'ok' }))
+
+  app.get(ASSETLINKS_SERVE_PATH, (c) => {
+    const filePath = resolveAssetLinksPath(config, configPath)
+    const body = loadAssetLinksFile(filePath)
+    if (!body) {
+      return c.json({ error: 'assetlinks not configured' }, 404)
+    }
+    return c.body(body, 200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, max-age=3600',
+    })
+  })
 
   app.get('/api/meta', (c) => {
     const token = getCookie(c, SESSION_COOKIE_NAME)

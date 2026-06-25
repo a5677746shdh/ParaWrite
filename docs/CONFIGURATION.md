@@ -1,0 +1,167 @@
+# Configuration
+
+ParaWrite reads a single YAML file. Default search order:
+
+1. `PARWRITE_CONFIG` environment variable
+2. `config/parawrite.yaml` (relative to cwd)
+3. `config/parawrite.docker.yaml`
+
+Copy [`config/parawrite.example.yaml`](../config/parawrite.example.yaml) to `config/parawrite.yaml` for local development. The live file is gitignored.
+
+String values support `${ENV_VAR}` substitution from the process environment.
+
+## Server
+
+```yaml
+server:
+  host: 0.0.0.0
+  port: 8787
+```
+
+## Application
+
+```yaml
+app:
+  default_provider: openai
+  default_model: gpt-4o-mini
+  auto_translate_delay_seconds: 2   # 0 = disabled
+  runtime_env: dev                  # Shown next to version in UI
+  translate_on_enter: false         # true: Enter; false: Ctrl/Cmd+Enter
+  alternatives_separator:
+    default: comma                  # comma | period
+    by_language:
+      zho: period
+      jpn: period
+  phrase_word_threshold:            # Words above this count = phrase (no synonyms/dict)
+    default: 4
+    by_language:
+      zho: 5
+      jpn: 5
+  layout:
+    three_column_min_width: 1280
+    two_column_min_width: 768
+```
+
+## Providers
+
+Each key under `providers` is a provider ID used in the UI and API.
+
+| `type` | Backends |
+|--------|----------|
+| `openai_compatible` | OpenAI, DeepSeek, and compatible chat APIs |
+| `claude` | Anthropic Claude (`api_path` optional, default `/v1/messages`) |
+| `ollama` | Local Ollama (`/api/chat`) |
+
+```yaml
+providers:
+  openai:
+    type: openai_compatible
+    base_url: https://api.openai.com/v1
+    api_key: ${OPENAI_API_KEY}
+    # proxy:                        # Optional HTTP/SOCKS5 proxy
+    #   url: http://127.0.0.1:7890
+    models:
+      - id: gpt-4o-mini
+        name: GPT-4o Mini
+        default: true
+```
+
+Mark exactly one model per provider with `default: true`, or set `app.default_model` explicitly.
+
+## Dictionary
+
+```yaml
+dictionary:
+  free_dictionary: true   # English: Free Dictionary API
+  wiktionary: true        # Multilingual Wiktionary
+  llm_fallback: true      # LLM-generated definitions when APIs miss
+```
+
+Contextual lookups (`POST /api/dictionary/context`) combine these sources and respect UI language for bilingual definitions.
+
+## Glossary
+
+```yaml
+glossary:
+  file: config/custom-dictionary.yaml
+```
+
+Relative paths resolve from the app root. Terms are injected into translation prompts when relevant. See [`config/custom-dictionary.example.yaml`](../config/custom-dictionary.example.yaml).
+
+## PWA / Android TWA
+
+```yaml
+pwa:
+  assetlinks_file: config/assetlinks.json
+```
+
+The server publishes this file at `GET /.well-known/assetlinks.json` for Android Trusted Web Activity verification. Copy [`config/assetlinks.example.json`](../config/assetlinks.example.json) and set your app `package_name` and signing certificate SHA-256 fingerprint. See [DEPLOYMENT.md](DEPLOYMENT.md#android-app-twa--digital-asset-links).
+
+## Deployment access (TOTP)
+
+Independent from user accounts:
+
+```yaml
+auth:
+  access_totp_secret: ${ACCESS_TOTP_SECRET}
+  restart_totp_secret: ${RESTART_TOTP_SECRET}
+  session_ttl_hours: 24
+```
+
+- **access_totp_secret** — When set, all `/api/*` routes (except public meta/auth) require a TOTP-verified session cookie.
+- **restart_totp_secret** — When set, `POST /api/admin/restart` requires a TOTP code in the body.
+
+## User login and history
+
+```yaml
+users:
+  login:
+    mode: disabled          # disabled | restricted | open
+    allowed_usernames:      # restricted: registration whitelist
+      - alice
+    session_ttl_hours: 168  # Remember-me cookie lifetime (7 days)
+  history:
+    similarity_threshold: 0.85
+    dedup_interval_seconds: 60
+    page_size: 5
+  data_dir: data            # SQLite directory; override with PARWRITE_DATA_DIR
+```
+
+| `mode` | Behavior |
+|--------|----------|
+| `disabled` | No user routes or history UI |
+| `restricted` | Only `allowed_usernames` may register; existing users can always log in |
+| `open` | Anyone may register; `allowed_usernames` controls restart-button visibility |
+
+## Theme
+
+Override CSS variables at runtime:
+
+```yaml
+theme:
+  primary: '#0f2b46'
+  accent: '#2d7ff9'
+  background: '#f5f7fa'
+  surface: '#ffffff'
+  border: '#d8dee9'
+  muted: '#6b7c93'
+  success: '#16a34a'
+  error: '#dc2626'
+  warning: '#f59e0b'
+  alert: '#ea580c'
+```
+
+Colors must be `#RRGGBB` hex. See [UI-DESIGN.md](UI-DESIGN.md) for token usage.
+
+## Docker template
+
+For container deploys, start from [`config/parawrite.docker.example.yaml`](../config/parawrite.docker.example.yaml).
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl/Cmd + Enter` | Translate (when `translate_on_enter: false`) |
+| `Enter` | Translate (when `translate_on_enter: true`) |
+
+Word selection in the target pane: single-click word, double-click clause, triple-click sentence; drag for phrases.

@@ -1,3 +1,7 @@
+/**
+ * LLM prompt templates for translation, synonyms, rephrase, and dictionary.
+ * JSON response shapes are documented inline on each builder.
+ */
 import { getLangName } from './types.js'
 
 export function buildTranslatePrompt(

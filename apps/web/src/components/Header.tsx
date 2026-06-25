@@ -165,7 +165,7 @@ export function Header() {
 
   return (
     <>
-    <header className="w-full border-b border-deepl-border bg-white">
+    <header className="w-full border-b border-deepl-border bg-deepl-surface">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex shrink-0 items-center gap-3">
             <img

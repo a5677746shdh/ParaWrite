@@ -30,6 +30,11 @@ export interface GlossaryConfig {
   file?: string
 }
 
+export interface PwaConfig {
+  /** Path to Digital Asset Links JSON for Android TWA (default: config/assetlinks.json). */
+  assetlinks_file?: string
+}
+
 export type AlternativesSeparator = 'comma' | 'period'
 
 export interface AlternativesSeparatorConfig {
@@ -118,6 +123,7 @@ export interface AppConfig {
   providers: Record<string, ProviderConfig>
   dictionary: DictionaryConfig
   glossary?: GlossaryConfig
+  pwa?: PwaConfig
   auth?: AuthConfig
   users?: UsersConfig
   theme?: ThemeConfig

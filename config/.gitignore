@@ -2,6 +2,8 @@
 parawrite.yaml
 parawrite.local.yaml
 custom-dictionary.yaml
+assetlinks.json
 
 # Only example templates are tracked
 !*.example.yaml
+!*.example.json

@@ -6,6 +6,7 @@ import { OllamaEngine } from './ollama.js'
 import { OpenAICompatibleEngine } from './openai.js'
 import type { IEngine } from './base.js'
 
+/** Instantiate a new engine for one provider (includes proxied fetch). */
 export function createEngine(provider: ProviderConfig): IEngine {
   const proxiedFetch = createProxiedFetch(provider.proxy)
   switch (provider.type) {
@@ -27,6 +28,7 @@ export function getEngineForProvider(
   return createEngine(provider)
 }
 
+/** Reuse engine instances per provider ID for the lifetime of the server process. */
 export function createEngineCache(config: AppConfig): (providerId: string) => IEngine {
   const cache = new Map<string, IEngine>()
   return (providerId: string) => {

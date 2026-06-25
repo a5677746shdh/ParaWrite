@@ -1,3 +1,7 @@
+/**
+ * In-memory user session store keyed by parawrite_user cookie.
+ * rememberMe=false omits maxAge on the cookie (browser session); rememberMe=true uses sessionTtlHours.
+ */
 import { createSessionToken } from '@parawrite/core'
 
 export const USER_SESSION_COOKIE_NAME = 'parawrite_user'

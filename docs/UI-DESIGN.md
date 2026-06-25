@@ -143,3 +143,22 @@ Stack rows with `space-y-1.5`.
 ```
 h-10 rounded-lg border border-deepl-border bg-white px-3 py-2 text-sm focus:border-deepl-accent
 ```
+
+## Screenshots
+
+Reference captures live in [`docs/snapshots/`](snapshots/). The same files are copied to `apps/web/public/screenshots/` for the PWA manifest.
+
+| File | Layout mode | Description |
+|------|-------------|-------------|
+| `main-interface.jpg` | Stacked (mobile width) | Default translation view with history sign-in prompt |
+| `desktop-layout.jpg` | Three-column | Wide viewport: source/target panes + resident word panel |
+| `tablet-layout.jpg` | Two-column | Medium viewport without side word panel |
+| `mobile-layout.jpg` | Stacked | Narrow viewport, vertical panes |
+| `login-dialog.jpg` | Modal | User auth dialog (login / register tabs) |
+| `synonyms-panel.jpg` | Modal / sheet | Word panel with synonyms, dictionary, and alternatives |
+
+Responsive breakpoints (`app.layout` in YAML):
+
+- **≥ `three_column_min_width` (default 1280px):** translation card + resident word panel sidebar
+- **≥ `two_column_min_width` (default 768px):** side-by-side source/target; word panel as modal
+- **Below 768px:** stacked panes; word panel as bottom sheet

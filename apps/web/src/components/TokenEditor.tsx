@@ -1,3 +1,8 @@
+/**
+ * Renders translated text as clickable word tokens.
+ * Click counting: 1 = word, 2 = clause, 3 = sentence (debounced CLICK_DELAY_MS).
+ * Adjacent word clicks extend selection; re-clicking an edge word shrinks the range.
+ */
 import { memo, useMemo, useRef } from 'react'
 import {
   combineTextFromRange,
@@ -186,7 +191,7 @@ export const TokenEditor = memo(function TokenEditor({
 
   if (isStreaming || !text) {
     return (
-      <div className="min-h-[6rem] w-full whitespace-pre-wrap break-words text-lg leading-relaxed text-deepl-blue">
+      <div className="block min-h-[6rem] w-full whitespace-pre-wrap break-words text-lg leading-relaxed text-deepl-blue">
         {text || (
           <span className="text-deepl-blue/40">{placeholder ?? '\u00a0'}</span>
         )}
@@ -198,7 +203,7 @@ export const TokenEditor = memo(function TokenEditor({
     <div
       ref={containerRef}
       onMouseUp={handleMouseUp}
-      className="min-h-[6rem] w-full select-text text-lg leading-relaxed text-deepl-blue"
+      className="block min-h-[6rem] w-full select-text text-lg leading-relaxed text-deepl-blue"
     >
       {segments.map((seg) => (
         <TokenSpan

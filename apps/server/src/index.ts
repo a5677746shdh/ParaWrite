@@ -1,3 +1,6 @@
+/**
+ * Server entry: load config, start HTTP listener, then run model checks in the background.
+ */
 import { serve } from '@hono/node-server'
 import { createApp } from './app.js'
 import {
@@ -36,4 +39,5 @@ serve(
   }
 )
 
+// Model availability is logged asynchronously so startup is not blocked by API probes.
 void checkConfiguredModelAvailability(config).then(logModelAvailabilityResults)

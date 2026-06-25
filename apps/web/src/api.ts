@@ -1,3 +1,7 @@
+/**
+ * Browser API client. All requests use credentials: 'include' for TOTP and user session cookies.
+ * SSE translation parses double-newline delimited events with data: JSON lines.
+ */
 import type {
   DictionaryEntry,
   HistoryPageResult,

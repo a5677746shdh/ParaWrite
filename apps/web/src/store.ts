@@ -1,3 +1,7 @@
+/**
+ * Global UI state: languages, translation text, word-panel data, and meta from /api/meta.
+ * Mutations that reset selection also clear synonyms/dictionary loaded for the prior word.
+ */
 import { create } from 'zustand'
 import type {
   DictionaryEntry,

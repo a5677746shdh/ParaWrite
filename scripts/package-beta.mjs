@@ -100,6 +100,10 @@ copyFile(
   path.join(root, 'config/parawrite.docker.example.yaml'),
   path.join(outDir, 'config/parawrite.docker.example.yaml')
 )
+copyFile(
+  path.join(root, 'config/assetlinks.example.json'),
+  path.join(outDir, 'config/assetlinks.example.json')
+)
 copyFile(path.join(root, 'CHANGELOG.md'), path.join(outDir, 'CHANGELOG.md'))
 copyFile(path.join(root, 'README.md'), path.join(outDir, 'README.md'))
 copyFile(path.join(root, 'LICENSE'), path.join(outDir, 'LICENSE'))
