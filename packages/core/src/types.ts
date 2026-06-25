@@ -105,6 +105,9 @@ export interface LayoutConfig {
   two_column_min_width?: number
 }
 
+/** `immediate` = lookup on select; `manual` = lookup button; `adaptive` = manual in 1–2 column, immediate in 3 column. */
+export type WordLookupMode = 'immediate' | 'manual' | 'adaptive'
+
 export interface AppConfig {
   server: {
     host: string
@@ -119,6 +122,10 @@ export interface AppConfig {
     alternatives_separator?: AlternativesSeparatorConfig
     phrase_word_threshold?: PhraseWordThresholdConfig
     layout?: LayoutConfig
+    /** When true, multi-word selection turns the copy button into a selection copier. */
+    selection_copy_enabled?: boolean
+    /** `immediate` / `manual` / `adaptive` (layout-aware manual vs immediate). */
+    word_lookup_mode?: WordLookupMode
   }
   providers: Record<string, ProviderConfig>
   dictionary: DictionaryConfig
@@ -187,6 +194,8 @@ export interface PublicMeta {
     default: number
     byLanguage: Record<string, number>
   }
+  selectionCopyEnabled: boolean
+  wordLookupMode: WordLookupMode
   userLogin: PublicUserLoginMeta
   theme: ThemeColors
   historyConfig: PublicHistoryConfig

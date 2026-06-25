@@ -4,6 +4,30 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-06-25
+
+### Added
+- `selection_copy_enabled` — copy selected phrase when multi-word selection (≥2 words)
+- `word_lookup_mode`: `immediate` | `manual` | `adaptive` (manual on 1–2 column layouts, immediate on 3-column)
+- Manual lookup button in target pane footer; legacy values `off`/`on`/`auto` still accepted
+- Multi-select guidance: briefly highlight words adjacent to selection on non-consecutive click
+- Icon-only footer buttons (backspace clear, copy, speak); speak glow animation with stop on re-click
+- Incremental word panel: synonyms, dictionary, and alternatives render as each API returns
+- Panel loader shuttle animation replaces per-section loading text
+- Chinese changelog (`CHANGELOG.zh-CN.md`)
+
+### Changed
+- Copy button uses selection highlight style when regional copy is active
+- Word panel close button: circular with background; cancel-selection matches selection style
+- Dictionary service reuses cached LLM engine instances
+- Panel API requests support `AbortSignal` and cancel on selection change or new translation
+
+### Fixed
+- Manual/adaptive lookup modes no longer fetch on word select (only on lookup click)
+- Multi-word selection debounced (400 ms) in immediate mode to reduce API calls
+- Word panel no longer waits for all requests before showing partial results
+- Translation aborts in-flight word-panel requests; TokenEditor timer cleanup on unmount
+
 ## [0.6.0] — 2026-06-25
 
 ### Added

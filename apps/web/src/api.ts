@@ -89,61 +89,73 @@ export async function streamTranslate(
   }
 }
 
-export async function fetchSynonyms(params: {
-  word: string
-  sentence: string
-  sourceText: string
-  sourceLang: string
-  targetLang: string
-  provider: string
-  model: string
-}): Promise<SynonymOption[]> {
+export async function fetchSynonyms(
+  params: {
+    word: string
+    sentence: string
+    sourceText: string
+    sourceLang: string
+    targetLang: string
+    provider: string
+    model: string
+  },
+  signal?: AbortSignal
+): Promise<SynonymOption[]> {
   const res = await fetch('/api/synonyms', {
     ...fetchOptions,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
+    signal,
   })
   if (!res.ok) throw new Error('Synonyms request failed')
   const data = await res.json()
   return data.synonyms ?? []
 }
 
-export async function fetchRephrase(params: {
-  sentence: string
-  sourceText: string
-  fullTranslation: string
-  sourceLang: string
-  targetLang: string
-  provider: string
-  model: string
-}): Promise<RephraseOption[]> {
+export async function fetchRephrase(
+  params: {
+    sentence: string
+    sourceText: string
+    fullTranslation: string
+    sourceLang: string
+    targetLang: string
+    provider: string
+    model: string
+  },
+  signal?: AbortSignal
+): Promise<RephraseOption[]> {
   const res = await fetch('/api/rephrase', {
     ...fetchOptions,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
+    signal,
   })
   if (!res.ok) throw new Error('Rephrase request failed')
   const data = await res.json()
   return data.alternatives ?? []
 }
 
-export async function fetchDictionaryContext(params: {
-  word: string
-  sentence: string
-  sourceText: string
-  sourceLang: string
-  targetLang: string
-  uiLang: string
-  provider: string
-  model: string
-}): Promise<DictionaryEntry | null> {
+export async function fetchDictionaryContext(
+  params: {
+    word: string
+    sentence: string
+    sourceText: string
+    sourceLang: string
+    targetLang: string
+    uiLang: string
+    provider: string
+    model: string
+  },
+  signal?: AbortSignal
+): Promise<DictionaryEntry | null> {
   const res = await fetch('/api/dictionary/context', {
     ...fetchOptions,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
+    signal,
   })
   if (!res.ok) throw new Error('Dictionary context failed')
   return res.json()

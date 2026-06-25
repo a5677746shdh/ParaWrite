@@ -52,7 +52,8 @@ interface TranslationState {
   setSelection: (
     word: string | null,
     range: { start: number; end: number } | null,
-    granularity?: SelectionGranularity | null
+    granularity?: SelectionGranularity | null,
+    preservePanel?: boolean
   ) => void
   setSynonyms: (synonyms: SynonymOption[]) => void
   setDictionary: (entry: DictionaryEntry | null) => void
@@ -134,13 +135,17 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
   setTranslating: (isTranslating) => set({ isTranslating }),
   setStreaming: (isStreaming) => set({ isStreaming }),
   setError: (error) => set({ error }),
-  setSelection: (selectedWord, selectedRange, selectionGranularity = null) =>
+  setSelection: (
+    selectedWord,
+    selectedRange,
+    selectionGranularity = null,
+    preservePanel = false
+  ) =>
     set({
       selectedWord,
       selectedRange,
       selectionGranularity,
-      synonyms: [],
-      dictionary: null,
+      ...(preservePanel ? {} : { synonyms: [], dictionary: null }),
     }),
   setSynonyms: (synonyms) => set({ synonyms }),
   setDictionary: (dictionary) => set({ dictionary }),

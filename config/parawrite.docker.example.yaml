@@ -21,6 +21,8 @@ app:
   layout:
     three_column_min_width: 1280
     two_column_min_width: 768
+  selection_copy_enabled: false
+  word_lookup_mode: adaptive
 
 providers:
   DeepSeek:

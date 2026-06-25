@@ -82,7 +82,7 @@ function getUserLoginMeta(
 
 export function createApp(config: AppConfig, configPath?: string): Hono {
   const getEngine = createEngineCache(config)
-  const dictionary = new DictionaryService(config)
+  const dictionary = new DictionaryService(config, getEngine)
   const appRoot = getAppRoot(configPath)
   const glossary = GlossaryService.fromConfig(appRoot, config.glossary?.file)
   const authManager = new AuthManager(config.auth?.session_ttl_hours ?? 24)

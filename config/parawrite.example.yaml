@@ -34,6 +34,8 @@ app:
   layout:                           # 响应式布局断点（像素）
     three_column_min_width: 1280    # ≥ 此宽度：翻译区 + 词语面板三列
     two_column_min_width: 768       # ≥ 此宽度：源/译文双列
+  selection_copy_enabled: false     # true：多选词时复制按钮复制选中片段
+  word_lookup_mode: adaptive        # immediate | manual | adaptive（区分：窄屏手动、三列立即）
 
 # ---------------------------------------------------------------------------
 # LLM 服务商 / Providers

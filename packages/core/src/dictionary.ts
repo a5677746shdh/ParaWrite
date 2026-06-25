@@ -6,6 +6,7 @@ import { LRUCache } from 'lru-cache'
 import type { AppConfig, DictionaryEntry } from './types.js'
 import { buildDictionaryContextPrompt, parseJsonResponse } from './prompts.js'
 import { buildMessages } from './engines/base.js'
+import type { IEngine } from './engines/base.js'
 import { getEngineForProvider } from './engines/index.js'
 import { getDefaultModel } from './config.js'
 
@@ -26,7 +27,10 @@ interface WiktionaryResponse {
 }
 
 export class DictionaryService {
-  constructor(private readonly config: AppConfig) {}
+  constructor(
+    private readonly config: AppConfig,
+    private readonly resolveEngine?: (providerId: string) => IEngine
+  ) {}
 
   async lookup(lang: string, word: string): Promise<DictionaryEntry | null> {
     const key = `${lang}:${word.toLowerCase()}`
@@ -77,7 +81,7 @@ export class DictionaryService {
       return cached && cached.meanings.length > 0 ? cached : null
     }
 
-    const engine = getEngineForProvider(this.config, provider)
+    const engine = this.resolveEngine?.(provider) ?? getEngineForProvider(this.config, provider)
     const resolvedModel = model ?? getDefaultModel(this.config, provider)
     const prompt = buildDictionaryContextPrompt(
       word,

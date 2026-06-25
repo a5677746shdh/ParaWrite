@@ -3,13 +3,14 @@
  * Click counting: 1 = word, 2 = clause, 3 = sentence (debounced CLICK_DELAY_MS).
  * Adjacent word clicks extend selection; re-clicking an edge word shrinks the range.
  */
-import { memo, useMemo, useRef } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import {
   combineTextFromRange,
   extendWordRange,
   extractClauseByWord,
   extractSentenceByWord,
   findTokenRangeForText,
+  getAdjacentWordHintsOutsideRange,
   isAdjacentWordToRange,
   isWordInRange,
   segmentText,
@@ -18,6 +19,7 @@ import {
   type TokenSegment,
 } from '@parawrite/core/client'
 import clsx from 'clsx'
+import { wordSelectionClass } from '../ui'
 
 interface TokenEditorProps {
   text: string
@@ -34,6 +36,7 @@ interface TokenEditorProps {
 }
 
 const CLICK_DELAY_MS = 350
+const INVALID_SELECT_FLASH_MS = 600
 
 export const TokenEditor = memo(function TokenEditor({
   text,
@@ -52,10 +55,29 @@ export const TokenEditor = memo(function TokenEditor({
   const containerRef = useRef<HTMLDivElement>(null)
   const clickCountRef = useRef(0)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [flashRanges, setFlashRanges] = useState<Array<{ start: number; end: number }> | null>(
+    null
+  )
   const pendingClickRef = useRef<{
     word: string
     range: { start: number; end: number }
   } | null>(null)
+
+  const flashInvalidSelection = (currentRange: { start: number; end: number }) => {
+    const { before, after } = getAdjacentWordHintsOutsideRange(segments, currentRange)
+    const hints: Array<{ start: number; end: number }> = []
+    if (before !== null) hints.push({ start: before, end: before })
+    if (after !== null) hints.push({ start: after, end: after })
+    if (hints.length === 0) return
+
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    setFlashRanges(hints)
+    flashTimerRef.current = setTimeout(() => {
+      setFlashRanges(null)
+      flashTimerRef.current = null
+    }, INVALID_SELECT_FLASH_MS)
+  }
 
   const resolveClick = () => {
     const count = clickCountRef.current
@@ -158,6 +180,9 @@ export const TokenEditor = memo(function TokenEditor({
           onConsecutiveWordSelect(phrase, newRange)
           return
         }
+
+        flashInvalidSelection(selectedRange)
+        return
       }
 
       return
@@ -169,6 +194,13 @@ export const TokenEditor = memo(function TokenEditor({
     clearClickTimer()
     clickTimerRef.current = setTimeout(resolveClick, CLICK_DELAY_MS)
   }
+
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current)
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    }
+  }, [])
 
   const handleMouseUp = () => {
     if (!onPhraseSelect || clickCountRef.current > 0) return
@@ -210,6 +242,7 @@ export const TokenEditor = memo(function TokenEditor({
           key={`${seg.index}-${seg.text}`}
           segment={seg}
           selectedRange={selectedRange}
+          flashRanges={flashRanges}
           onTokenClick={handleWordClick}
         />
       ))}
@@ -220,16 +253,23 @@ export const TokenEditor = memo(function TokenEditor({
 function TokenSpan({
   segment,
   selectedRange,
+  flashRanges,
   onTokenClick,
 }: {
   segment: TokenSegment
   selectedRange: { start: number; end: number } | null
+  flashRanges: Array<{ start: number; end: number }> | null
   onTokenClick: (word: string, range: { start: number; end: number }) => void
 }) {
   const isSelected =
     selectedRange &&
     segment.index >= selectedRange.start &&
     segment.index <= selectedRange.end
+
+  const isFlashing =
+    flashRanges?.some(
+      (r) => segment.index >= r.start && segment.index <= r.end
+    ) ?? false
 
   if (!segment.isWord) {
     return <span className="whitespace-pre-wrap">{segment.text}</span>
@@ -242,8 +282,8 @@ function TokenSpan({
         onTokenClick(segment.text, { start: segment.index, end: segment.index })
       }
       className={clsx(
-        'rounded px-0.5 transition-colors hover:bg-deepl-accent/15',
-        isSelected && 'bg-deepl-accent/25 ring-1 ring-deepl-accent/40'
+        'rounded px-0.5 hover:bg-deepl-accent/15',
+        isSelected || isFlashing ? wordSelectionClass : 'transition-colors'
       )}
     >
       {segment.text}

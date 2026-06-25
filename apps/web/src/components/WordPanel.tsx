@@ -1,14 +1,14 @@
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import clsx from 'clsx'
 import { diffHighlight } from '@parawrite/core/client'
 import type {
   DictionaryEntry,
   RephraseOption,
   SynonymOption,
 } from '@parawrite/core/client'
-import { textButtonPx, optionChipClass, optionListButtonClass } from '../ui'
+import { optionChipClass, optionListButtonClass, modalCloseButtonClass } from '../ui'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import { PanelLoader } from './PanelLoader'
 
 interface WordPanelProps {
   mode: 'resident' | 'modal' | 'sheet'
@@ -80,9 +80,7 @@ export function WordPanel({
 
   const showHint = mode === 'resident' && !selectedWord && !isLoading
   const showClose = mode !== 'resident'
-  const showDictionary =
-    !isPhraseSelection && !!dictionary && dictionary.meanings.length > 0
-  const originalSentence = rephraseOriginalSentence ?? ''
+  const showPanelContent = !!selectedWord || isLoading
 
   const panelBody = (
     <>
@@ -94,7 +92,9 @@ export function WordPanel({
           <button
             type="button"
             onClick={onClose}
-            className={clsx('rounded-lg py-1 text-sm text-deepl-blue/60 hover:bg-deepl-light', textButtonPx)}
+            title={t('close')}
+            aria-label={t('close')}
+            className={modalCloseButtonClass}
           >
             ✕
           </button>
@@ -103,18 +103,14 @@ export function WordPanel({
 
       {showHint ? (
         <p className="text-sm leading-relaxed text-deepl-blue/60">{t('panelHint')}</p>
-      ) : isLoading ? (
-        <p className="text-sm text-deepl-blue/60">{t('loading')}</p>
-      ) : (
+      ) : showPanelContent ? (
         <>
           {!isPhraseSelection && (
             <section>
               <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-deepl-blue/60">
                 {t('synonyms')}
               </h4>
-              {synonyms.length === 0 ? (
-                <p className="text-sm text-deepl-blue/50">{t('noResults')}</p>
-              ) : (
+              {synonyms.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {synonyms.map((syn) => (
                     <button
@@ -128,33 +124,45 @@ export function WordPanel({
                     </button>
                   ))}
                 </div>
+              ) : isLoading ? (
+                <PanelLoader />
+              ) : (
+                <p className="text-sm text-deepl-blue/50">{t('noResults')}</p>
               )}
             </section>
           )}
 
-          {showDictionary && (
+          {!isPhraseSelection && (
             <section>
               <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-deepl-blue/60">
                 {t('dictionary')}
               </h4>
-              {dictionary.phonetic && (
-                <p className="mb-2 text-sm text-deepl-blue/70">/{dictionary.phonetic}/</p>
+              {dictionary && dictionary.meanings.length > 0 ? (
+                <>
+                  {dictionary.phonetic && (
+                    <p className="mb-2 text-sm text-deepl-blue/70">/{dictionary.phonetic}/</p>
+                  )}
+                  <ul className="space-y-2 text-sm">
+                    {dictionary.meanings.map((m, i) => (
+                      <li key={i}>
+                        {m.partOfSpeech && (
+                          <span className="mr-2 rounded bg-deepl-light px-1.5 py-0.5 text-xs">
+                            {m.partOfSpeech}
+                          </span>
+                        )}
+                        <span>{m.definition}</span>
+                        {m.example && (
+                          <p className="mt-1 text-deepl-blue/60 italic">{m.example}</p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : isLoading ? (
+                <PanelLoader />
+              ) : (
+                <p className="text-sm text-deepl-blue/50">{t('noResults')}</p>
               )}
-              <ul className="space-y-2 text-sm">
-                {dictionary.meanings.map((m, i) => (
-                  <li key={i}>
-                    {m.partOfSpeech && (
-                      <span className="mr-2 rounded bg-deepl-light px-1.5 py-0.5 text-xs">
-                        {m.partOfSpeech}
-                      </span>
-                    )}
-                    <span>{m.definition}</span>
-                    {m.example && (
-                      <p className="mt-1 text-deepl-blue/60 italic">{m.example}</p>
-                    )}
-                  </li>
-                ))}
-              </ul>
             </section>
           )}
 
@@ -162,9 +170,7 @@ export function WordPanel({
             <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-deepl-blue/60">
               {t('alternatives')}
             </h4>
-            {rephraseOptions.length === 0 ? (
-              <p className="text-sm text-deepl-blue/50">{t('noResults')}</p>
-            ) : (
+            {rephraseOptions.length > 0 ? (
               <ul className="space-y-1.5">
                 {rephraseOptions.map((opt) => (
                   <li key={opt.text}>
@@ -173,9 +179,9 @@ export function WordPanel({
                       onClick={() => onApplyRephrase(opt.text)}
                       className={optionListButtonClass}
                     >
-                      {originalSentence ? (
+                      {rephraseOriginalSentence ? (
                         <HighlightedAlternative
-                          original={originalSentence}
+                          original={rephraseOriginalSentence}
                           alternative={opt.text}
                           lang={targetLang}
                         />
@@ -189,10 +195,14 @@ export function WordPanel({
                   </li>
                 ))}
               </ul>
+            ) : isLoading ? (
+              <PanelLoader />
+            ) : (
+              <p className="text-sm text-deepl-blue/50">{t('noResults')}</p>
             )}
           </section>
         </>
-      )}
+      ) : null}
     </>
   )
 

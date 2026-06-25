@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import clsx from 'clsx'
 import {
+  combineTextFromRange,
   detectSelectionGranularity,
   detectTextLanguage,
   extractSentenceByWord,
@@ -30,13 +31,16 @@ import { TextStats } from './TextStats'
 import { TokenEditor } from './TokenEditor'
 import { WordPanel } from './WordPanel'
 import { HistoryPanel } from './HistoryPanel'
-import { textButtonPx } from '../ui'
+import { textButtonPx, paneIconButtonClass, speakActiveButtonClass, wordSelectionCancelButtonClass } from '../ui'
 
 /** Responsive breakpoints from meta.layout or defaults; drives three-column / modal / sheet word panel. */
 const DEFAULT_BREAKPOINTS = {
   threeColumnMinWidth: 1280,
   twoColumnMinWidth: 768,
 }
+
+/** Wait for idle after multi-word selection before synonym/dictionary requests. */
+const WORD_FETCH_DEBOUNCE_MS = 400
 
 export function Translator() {
   const { t, i18n } = useTranslation()
@@ -116,9 +120,12 @@ export function Translator() {
   )
 
   const [copied, setCopied] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [wordPanelRequested, setWordPanelRequested] = useState(false)
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('twoColumn')
   const abortRef = useRef<AbortController | null>(null)
   const panelAbortRef = useRef<AbortController | null>(null)
+  const wordFetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoTranslateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleTranslateRef = useRef<() => Promise<void>>(async () => {})
   const prevSourceForAutoRef = useRef<string | null>(null)
@@ -188,6 +195,10 @@ export function Translator() {
       clearTimeout(autoTranslateTimer.current)
       autoTranslateTimer.current = null
     }
+
+    cancelScheduledWordFetch()
+    panelAbortRef.current?.abort()
+    setWordPanelRequested(false)
 
     abortRef.current?.abort()
     const controller = new AbortController()
@@ -339,13 +350,34 @@ export function Translator() {
 
   const isPhraseSelection = selectedWordCount > phraseWordThreshold
 
-  const loadWordData = async (
+  const selectionCopyEnabled = meta?.selectionCopyEnabled ?? false
+
+  const isManualLookup = useMemo(() => {
+    const mode = meta?.wordLookupMode ?? 'adaptive'
+    if (mode === 'manual') return true
+    if (mode === 'immediate') return false
+    return layoutMode !== 'threeColumn'
+  }, [meta?.wordLookupMode, layoutMode])
+
+  const selectedText = useMemo(() => {
+    if (!selectedRange) return ''
+    return combineTextFromRange(targetSegments, selectedRange).trim()
+  }, [selectedRange, targetSegments])
+
+  const canCopySelection =
+    selectionCopyEnabled && selectedWordCount >= 2 && !!selectedText
+
+  const abortPanelFetch = () => {
+    panelAbortRef.current?.abort()
+    panelAbortRef.current = null
+  }
+
+  const fetchWordData = async (
     word: string,
     range: { start: number; end: number },
     forcedGranularity?: SelectionGranularity
   ) => {
-    // Cancel in-flight synonym/dictionary/rephrase requests when the user selects another word.
-    panelAbortRef.current?.abort()
+    abortPanelFetch()
     const controller = new AbortController()
     panelAbortRef.current = controller
     const { signal } = controller
@@ -355,7 +387,6 @@ export function Translator() {
     setPanelLoading(true)
     setSynonyms([])
     setDictionary(null)
-    setRephraseOptions([])
 
     const sentence = extractSentenceByWord(targetText, word, targetLang)
     const rephraseTarget = resolveRephraseTarget(
@@ -364,6 +395,7 @@ export function Translator() {
       targetLang,
       granularity
     )
+    setRephraseOptions([], rephraseTarget)
     const uiLang = i18n.language.startsWith('zh') ? 'zh' : 'en'
     const wordCount = countWordsInRange(targetSegments, range)
     const threshold =
@@ -383,11 +415,14 @@ export function Translator() {
     const isStale = () => signal.aborted
 
     try {
-      const rephrasePromise = fetchRephrase({
-        sentence: rephraseTarget,
-        fullTranslation: targetText,
-        ...sharedParams,
-      }).then((rephrase) => {
+      const rephrasePromise = fetchRephrase(
+        {
+          sentence: rephraseTarget,
+          fullTranslation: targetText,
+          ...sharedParams,
+        },
+        signal
+      ).then((rephrase) => {
         if (isStale()) return
         const rephraseTexts =
           granularity === 'sentence'
@@ -404,23 +439,26 @@ export function Translator() {
 
       const extrasPromise = isPhrase
         ? Promise.resolve()
-        : Promise.all([
-            fetchSynonyms({ word, sentence, ...sharedParams }).then((syns) => {
+        : Promise.allSettled([
+            fetchSynonyms({ word, sentence, ...sharedParams }, signal).then((syns) => {
               if (!isStale()) setSynonyms(syns)
             }),
-            fetchDictionaryContext({
-              word,
-              sentence,
-              uiLang,
-              ...sharedParams,
-            }).then((dict) => {
+            fetchDictionaryContext(
+              {
+                word,
+                sentence,
+                uiLang,
+                ...sharedParams,
+              },
+              signal
+            ).then((dict) => {
               if (!isStale()) setDictionary(dict)
             }),
           ])
 
-      await Promise.all([rephrasePromise, extrasPromise])
+      await Promise.allSettled([rephrasePromise, extrasPromise])
     } catch (err) {
-      if (!isStale()) {
+      if (!isStale() && (err as Error).name !== 'AbortError') {
         setError((err as Error).message)
       }
     } finally {
@@ -430,19 +468,107 @@ export function Translator() {
     }
   }
 
+  const applySelectionVisual = (
+    word: string,
+    range: { start: number; end: number },
+    forcedGranularity?: SelectionGranularity
+  ) => {
+    const granularity = forcedGranularity ?? detectSelectionGranularity(word, targetText)
+    setSelection(word, range, granularity, true)
+    setWordPanelRequested(false)
+    abortPanelFetch()
+    setPanelLoading(false)
+    setSynonyms([])
+    setDictionary(null)
+    setRephraseOptions([])
+  }
+
+  const cancelScheduledWordFetch = () => {
+    if (wordFetchTimerRef.current) {
+      clearTimeout(wordFetchTimerRef.current)
+      wordFetchTimerRef.current = null
+    }
+  }
+
+  const selectWord = (
+    word: string,
+    range: { start: number; end: number },
+    forcedGranularity?: SelectionGranularity
+  ) => {
+    cancelScheduledWordFetch()
+    applySelectionVisual(word, range, forcedGranularity)
+  }
+
+  const selectWordAndFetch = (
+    word: string,
+    range: { start: number; end: number },
+    forcedGranularity?: SelectionGranularity,
+    debounce = false
+  ) => {
+    if (isManualLookup) {
+      selectWord(word, range, forcedGranularity)
+      return
+    }
+
+    applySelectionVisual(word, range, forcedGranularity)
+    cancelScheduledWordFetch()
+
+    if (debounce) {
+      wordFetchTimerRef.current = setTimeout(() => {
+        wordFetchTimerRef.current = null
+        void fetchWordData(word, range, forcedGranularity)
+      }, WORD_FETCH_DEBOUNCE_MS)
+      return
+    }
+
+    void fetchWordData(word, range, forcedGranularity)
+  }
+
   const handleConsecutiveWordSelect = (word: string, range: { start: number; end: number }) => {
-    void loadWordData(word, range, 'word')
+    selectWordAndFetch(word, range, 'word', true)
   }
 
   const handleShrinkWordSelect = (word: string, range: { start: number; end: number }) => {
-    void loadWordData(word, range, 'word')
+    selectWordAndFetch(word, range, 'word', true)
   }
 
+  const handleWordSelect = (word: string, range: { start: number; end: number }) => {
+    selectWordAndFetch(word, range, undefined, false)
+  }
+
+  const handlePhraseSelect = (word: string, range: { start: number; end: number }) => {
+    selectWordAndFetch(word, range, undefined, false)
+  }
+
+  const handleManualLookup = () => {
+    if (!selectedWord || !selectedRange) return
+    cancelScheduledWordFetch()
+    setWordPanelRequested(true)
+    void fetchWordData(
+      selectedWord,
+      selectedRange,
+      selectionGranularity ?? undefined
+    )
+  }
+
+  useEffect(() => () => cancelScheduledWordFetch(), [])
+
+  useEffect(() => {
+    if (!isManualLookup) return
+    cancelScheduledWordFetch()
+    abortPanelFetch()
+    setPanelLoading(false)
+  }, [isManualLookup])
+
   const clearSelection = () => {
+    cancelScheduledWordFetch()
+    abortPanelFetch()
+    setWordPanelRequested(false)
     setSelection(null, null)
     setSynonyms([])
     setDictionary(null)
     setRephraseOptions([])
+    setPanelLoading(false)
   }
 
   const applySynonym = (replacement: string) => {
@@ -474,7 +600,8 @@ export function Translator() {
   }
 
   const copyText = () => {
-    if (!targetText || copied) return
+    const textToCopy = canCopySelection ? selectedText : targetText
+    if (!textToCopy || copied) return
 
     const showCopied = () => {
       setCopied(true)
@@ -482,27 +609,52 @@ export function Translator() {
     }
 
     if (canUseClipboardApi()) {
-      void navigator.clipboard!.writeText(targetText).then(showCopied, () => {
-        if (copyWithExecCommand(targetText)) showCopied()
+      void navigator.clipboard!.writeText(textToCopy).then(showCopied, () => {
+        if (copyWithExecCommand(textToCopy)) showCopied()
       })
       return
     }
 
-    if (copyWithExecCommand(targetText)) showCopied()
+    if (copyWithExecCommand(textToCopy)) showCopied()
   }
 
   const speak = () => {
-    if (!targetText || !('speechSynthesis' in window)) return
+    if (!('speechSynthesis' in window)) return
+    if (isSpeaking) {
+      window.speechSynthesis.cancel()
+      setIsSpeaking(false)
+      return
+    }
+    if (!targetText) return
     const utterance = new SpeechSynthesisUtterance(targetText)
     utterance.lang = targetLang === 'zh' ? 'zh-CN' : targetLang
+    utterance.onend = () => setIsSpeaking(false)
+    utterance.onerror = () => setIsSpeaking(false)
+    setIsSpeaking(true)
     window.speechSynthesis.speak(utterance)
   }
+
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!targetText && isSpeaking && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+      setIsSpeaking(false)
+    }
+  }, [targetText, isSpeaking])
 
   const isThreeColumn = layoutMode === 'threeColumn'
   const isStacked = layoutMode === 'stacked'
 
   const panelMode = isThreeColumn ? 'resident' : isStacked ? 'sheet' : 'modal'
-  const panelVisible = isThreeColumn || !!selectedWord || isPanelLoading
+  const panelVisible =
+    isThreeColumn ||
+    isPanelLoading ||
+    (isManualLookup ? wordPanelRequested && !!selectedWord : !!selectedWord)
 
   const sourceTextareaRef = useAutoResizeTextarea(sourceText)
 
@@ -535,18 +687,34 @@ export function Translator() {
         <div className="flex shrink-0 gap-2">
           <button
             type="button"
+            onClick={clear}
+            title={t('clear')}
+            aria-label={t('clear')}
+            className={paneIconButtonClass}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
+              <line x1="18" y1="9" x2="12" y2="15" />
+              <line x1="12" y1="9" x2="18" y2="15" />
+            </svg>
+          </button>
+          <button
+            type="button"
             onClick={handleTranslate}
             disabled={isTranslating || !sourceText.trim()}
             className={clsx('rounded-lg bg-deepl-accent py-1.5 text-sm font-medium text-white hover:bg-deepl-accent/90 disabled:opacity-50', textButtonPx)}
           >
             {isTranslating ? t('translating') : t('translate')}
-          </button>
-          <button
-            type="button"
-            onClick={clear}
-            className={clsx('rounded-lg border border-deepl-border bg-white py-1.5 text-sm hover:bg-deepl-light', textButtonPx)}
-          >
-            {t('clear')}
           </button>
         </div>
       </div>
@@ -562,16 +730,22 @@ export function Translator() {
           isStreaming={isStreaming}
           selectedRange={selectedRange}
           selectionGranularity={selectionGranularity}
-          onTokenClick={loadWordData}
+          onTokenClick={handleWordSelect}
           onConsecutiveWordSelect={handleConsecutiveWordSelect}
           onShrinkWordSelect={handleShrinkWordSelect}
-          onPhraseSelect={loadWordData}
+          onPhraseSelect={handlePhraseSelect}
           onDeselect={clearSelection}
           placeholder={t('targetPlaceholder')}
         />
       </div>
       <div className={paneFooterClass}>
-        <TextStats text={targetText} lang={targetLang} />
+        <TextStats
+          text={targetText}
+          lang={targetLang}
+          showLookupButton={isManualLookup && !!selectedWord}
+          onLookup={handleManualLookup}
+          lookupDisabled={isPanelLoading}
+        />
         <div className="flex shrink-0 gap-2">
           {selectedWordCount >= 2 && (
             <button
@@ -579,7 +753,7 @@ export function Translator() {
               onClick={clearSelection}
               title={t('clearSelection')}
               aria-label={t('clearSelection')}
-              className="flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-deepl-border bg-white hover:bg-deepl-light"
+              className={wordSelectionCancelButtonClass}
             >
               <svg
                 width="18"
@@ -600,15 +774,13 @@ export function Translator() {
           <button
             type="button"
             onClick={copyText}
-            disabled={!targetText || copied}
+            disabled={copied || (canCopySelection ? !selectedText : !targetText)}
             title={copied ? t('copied') : t('copy')}
             aria-label={copied ? t('copied') : t('copy')}
             className={clsx(
-              'flex h-[34px] min-w-[54px] items-center justify-center rounded-lg border py-1.5 text-sm disabled:opacity-50',
-              textButtonPx,
-              copied
-                ? 'border-deepl-success/30 bg-deepl-success/10 text-deepl-success'
-                : 'border-deepl-border bg-white hover:bg-deepl-light'
+              paneIconButtonClass,
+              canCopySelection && !copied && wordSelectionCancelButtonClass,
+              copied && 'border-deepl-success/30 bg-deepl-success/10 text-deepl-success'
             )}
           >
             {copied ? (
@@ -626,16 +798,45 @@ export function Translator() {
                 <path d="M20 6 9 17l-5-5" />
               </svg>
             ) : (
-              t('copy')
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
             )}
           </button>
           <button
             type="button"
             onClick={speak}
-            disabled={!targetText}
-            className={clsx('rounded-lg border border-deepl-border bg-white py-1.5 text-sm hover:bg-deepl-light disabled:opacity-50', textButtonPx)}
+            disabled={!targetText && !isSpeaking}
+            title={isSpeaking ? t('stopSpeak') : t('speak')}
+            aria-label={isSpeaking ? t('stopSpeak') : t('speak')}
+            className={clsx(paneIconButtonClass, isSpeaking && speakActiveButtonClass)}
           >
-            {t('speak')}
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            </svg>
           </button>
         </div>
       </div>
@@ -670,7 +871,7 @@ export function Translator() {
     isLoading: isPanelLoading,
     onApplySynonym: applySynonym,
     onApplyRephrase: applyRephrase,
-    onClose: () => setSelection(null, null),
+    onClose: clearSelection,
   }
 
   return (

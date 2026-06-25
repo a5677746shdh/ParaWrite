@@ -251,6 +251,27 @@ export function isAdjacentWordToRange(
   return clickedPos === firstPos - 1 || clickedPos === lastPos + 1
 }
 
+/** Word indices immediately before/after a consecutive selection (for multi-select hints). */
+export function getAdjacentWordHintsOutsideRange(
+  segments: TokenSegment[],
+  range: { start: number; end: number }
+): { before: number | null; after: number | null } {
+  const words = segments.filter((s) => s.isWord)
+  if (words.length === 0) return { before: null, after: null }
+
+  const positionByIndex = new Map(words.map((w, i) => [w.index, i]))
+  const rangeWords = words.filter((w) => w.index >= range.start && w.index <= range.end)
+  if (rangeWords.length === 0) return { before: null, after: null }
+
+  const firstPos = positionByIndex.get(rangeWords[0].index)!
+  const lastPos = positionByIndex.get(rangeWords[rangeWords.length - 1].index)!
+
+  return {
+    before: firstPos > 0 ? words[firstPos - 1].index : null,
+    after: lastPos < words.length - 1 ? words[lastPos + 1].index : null,
+  }
+}
+
 /**
  * Remove one word from a consecutive word selection.
  * Returns null to clear (single word), a new range to shrink, or undefined to ignore.

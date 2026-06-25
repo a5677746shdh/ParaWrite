@@ -40,3 +40,48 @@ select {
   background-size: 0.875rem;
   padding-right: 2.25rem;
 }
+
+@keyframes speak-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--color-accent) 25%, transparent),
+      0 0 14px color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+}
+
+.speak-active-glow {
+  animation: speak-glow 1.2s ease-in-out infinite;
+}
+
+.panel-loader {
+  position: relative;
+  width: 3rem;
+  height: 5px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-border) 80%, transparent);
+  overflow: hidden;
+}
+
+.panel-loader-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 45%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+  animation: panel-loader-shuttle 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes panel-loader-shuttle {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(138%);
+  }
+}

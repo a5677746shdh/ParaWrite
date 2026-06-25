@@ -14,6 +14,7 @@ import type {
   ProviderConfig,
   ThemeColors,
   UserLoginMode,
+  WordLookupMode,
 } from './types.js'
 import { BUILD_VERSION } from './version.generated.js'
 import { fromConfigLang, mapConfigLangRecord } from './lang-codes.js'
@@ -191,6 +192,34 @@ export function getPhraseWordThresholdsMeta(config: AppConfig) {
   }
 }
 
+export function getSelectionCopyEnabled(config: AppConfig): boolean {
+  return config.app.selection_copy_enabled ?? false
+}
+
+export function normalizeWordLookupMode(raw?: string): WordLookupMode {
+  switch (raw?.trim().toLowerCase()) {
+    case 'manual':
+    case 'on':
+      return 'manual'
+    case 'immediate':
+    case 'off':
+      return 'immediate'
+    case 'adaptive':
+    case 'auto':
+      return 'adaptive'
+    default:
+      return 'adaptive'
+  }
+}
+
+export function getWordLookupMode(config: AppConfig): WordLookupMode {
+  return normalizeWordLookupMode(config.app.word_lookup_mode)
+}
+
+export function isManualWordLookup(config: AppConfig): boolean {
+  return getWordLookupMode(config) === 'manual'
+}
+
 export function resolvePhraseWordThreshold(
   config: AppConfig,
   targetLang6391: string
@@ -305,6 +334,8 @@ export function toPublicMeta(
     translateOnEnter: config.app.translate_on_enter ?? false,
     alternativesSeparators: getAlternativesSeparatorsMeta(config),
     phraseWordThresholds: getPhraseWordThresholdsMeta(config),
+    selectionCopyEnabled: getSelectionCopyEnabled(config),
+    wordLookupMode: getWordLookupMode(config),
     userLogin: {
       enabled: loginEnabled,
       mode: loginMode,
