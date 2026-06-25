@@ -6,6 +6,7 @@ import type {
   SelectionGranularity,
   SynonymOption,
 } from '@parawrite/core/client'
+import { fetchMeta } from './api'
 
 interface TranslationState {
   meta: PublicMeta | null
@@ -27,7 +28,10 @@ interface TranslationState {
   rephraseOptions: RephraseOption[]
   rephraseOriginalSentence: string | null
   isPanelLoading: boolean
+  historyRefreshKey: number
   setMeta: (meta: PublicMeta) => void
+  refreshMeta: () => Promise<PublicMeta>
+  bumpHistoryRefresh: () => void
   setSourceLang: (lang: string) => void
   setTargetLang: (lang: string) => void
   setDetectedSourceLang: (lang: string | null) => void
@@ -73,12 +77,24 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
   rephraseOptions: [],
   rephraseOriginalSentence: null,
   isPanelLoading: false,
+  historyRefreshKey: 0,
   setMeta: (meta) =>
     set({
       meta,
       provider: meta.defaultProvider,
       model: meta.defaultModel,
     }),
+  refreshMeta: async () => {
+    const meta = await fetchMeta()
+    set({
+      meta,
+      provider: meta.defaultProvider,
+      model: meta.defaultModel,
+    })
+    return meta
+  },
+  bumpHistoryRefresh: () =>
+    set((s) => ({ historyRefreshKey: s.historyRefreshKey + 1 })),
   setSourceLang: (sourceLang) => set({ sourceLang, detectedSourceLang: null }),
   setTargetLang: (targetLang) => set({ targetLang }),
   setDetectedSourceLang: (detectedSourceLang) => set({ detectedSourceLang }),

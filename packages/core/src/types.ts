@@ -49,6 +49,52 @@ export interface AuthConfig {
   session_ttl_hours?: number
 }
 
+export type UserLoginMode = 'disabled' | 'restricted' | 'open'
+
+export interface UserLoginConfig {
+  mode?: UserLoginMode
+  allowed_usernames?: string[]
+  session_ttl_hours?: number
+}
+
+export interface UserHistoryConfig {
+  similarity_threshold?: number
+  dedup_interval_seconds?: number
+  page_size?: number
+}
+
+export interface UsersConfig {
+  login?: UserLoginConfig
+  history?: UserHistoryConfig
+  data_dir?: string
+}
+
+export interface ThemeConfig {
+  primary?: string
+  accent?: string
+  background?: string
+  surface?: string
+  border?: string
+  muted?: string
+  success?: string
+  error?: string
+  warning?: string
+  alert?: string
+}
+
+export interface ThemeColors {
+  primary: string
+  accent: string
+  background: string
+  surface: string
+  border: string
+  muted: string
+  success: string
+  error: string
+  warning: string
+  alert: string
+}
+
 export interface LayoutConfig {
   three_column_min_width?: number
   two_column_min_width?: number
@@ -73,12 +119,42 @@ export interface AppConfig {
   dictionary: DictionaryConfig
   glossary?: GlossaryConfig
   auth?: AuthConfig
+  users?: UsersConfig
+  theme?: ThemeConfig
 }
 
 export interface PublicProviderInfo {
   id: string
   type: ProviderType
   models: ModelConfig[]
+}
+
+export interface PublicUserSummary {
+  id: number
+  username: string
+  nickname: string | null
+}
+
+export interface PublicUserLoginMeta {
+  enabled: boolean
+  mode: UserLoginMode
+  authenticated: boolean
+  user: PublicUserSummary | null
+  sessionTtlHours: number
+}
+
+export interface PublicHistoryConfig {
+  similarityThreshold: number
+  dedupIntervalSeconds: number
+  pageSize: number
+}
+
+export interface HistoryPageResult {
+  entries: TranslationHistoryEntry[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
 }
 
 export interface PublicMeta {
@@ -94,6 +170,7 @@ export interface PublicMeta {
   }
   authRequired: boolean
   restartAuthRequired: boolean
+  canRestartBackend: boolean
   authenticated: boolean
   translateOnEnter: boolean
   alternativesSeparators: {
@@ -104,6 +181,27 @@ export interface PublicMeta {
     default: number
     byLanguage: Record<string, number>
   }
+  userLogin: PublicUserLoginMeta
+  theme: ThemeColors
+  historyConfig: PublicHistoryConfig
+}
+
+export interface TranslationHistoryEntry {
+  id: number
+  sourceText: string
+  targetText: string
+  sourceLang: string
+  targetLang: string
+  isFavorite: boolean
+  createdAt: number
+}
+
+export interface UserProfile {
+  id: number
+  username: string
+  nickname: string | null
+  note: string | null
+  createdAt: number
 }
 
 export type LayoutMode = 'threeColumn' | 'twoColumn' | 'stacked'

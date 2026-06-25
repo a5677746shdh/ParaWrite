@@ -7,6 +7,7 @@ services:
       - '8787:8787'
     volumes:
       - ../config/parawrite.yaml:/app/config/parawrite.yaml:ro
+      - ../data:/app/data
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}

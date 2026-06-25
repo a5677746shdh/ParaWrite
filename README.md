@@ -2,7 +2,7 @@
 
 ParaWrite is an open-source writing assistant inspired by DeepL's "Alternatives" feature. It helps you polish translations with context-aware synonyms, dictionary lookups, and sentence rephrasing—all powered by configurable LLM APIs.
 
-**Version 0.4.1** — see [CHANGELOG.md](CHANGELOG.md) for release history.
+**Version 0.5.0** — see [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Features
 
@@ -16,6 +16,9 @@ ParaWrite is an open-source writing assistant inspired by DeepL's "Alternatives"
 - **PWA** — installable progressive web app with offline shell
 - **YAML provider config** — OpenAI-compatible, Claude, and Ollama backends
 - **Copy & text-to-speech** for translated output
+- **User login & translation history** — optional SQLite-backed accounts and history (`users.login.mode`: disabled, restricted, open); see config example
+- **Custom theme colors** — override primary, accent, background, and semantic colors in YAML
+- **UI design guide** — see [docs/UI-DESIGN.md](docs/UI-DESIGN.md)
 
 ## Project Structure
 

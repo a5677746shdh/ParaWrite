@@ -23,7 +23,7 @@ export function LanguageSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 rounded-lg border border-deepl-border bg-white px-3 py-2 text-sm text-deepl-blue outline-none focus:border-deepl-accent"
+        className="h-10 rounded-lg border border-deepl-border bg-white px-3 py-0 text-sm leading-10 text-deepl-blue outline-none focus:border-deepl-accent"
       >
         {languages.map((lang) => (
           <option key={lang.code} value={lang.code}>

@@ -65,7 +65,7 @@ export function AuthGate({ onAuthenticated }: AuthGateProps) {
             placeholder="000000"
             className={clsx(
               'mt-1 w-full rounded-lg border px-3 py-2.5 text-center text-lg tracking-widest outline-none focus:border-deepl-accent',
-              error ? 'border-red-300' : 'border-deepl-border'
+              error ? 'border-deepl-error/40' : 'border-deepl-border'
             )}
             autoFocus
           />
@@ -77,7 +77,7 @@ export function AuthGate({ onAuthenticated }: AuthGateProps) {
           className={clsx(
             'mt-5 w-full rounded-lg px-4 py-2.5 text-sm font-medium disabled:opacity-50',
             error
-              ? 'bg-red-500 text-white hover:bg-red-500'
+              ? 'bg-deepl-error text-white hover:bg-deepl-error'
               : 'bg-deepl-accent text-white hover:bg-deepl-accent/90'
           )}
         >

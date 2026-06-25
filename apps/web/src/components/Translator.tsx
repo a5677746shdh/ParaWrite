@@ -19,6 +19,7 @@ import {
   fetchDictionaryContext,
   fetchRephrase,
   fetchSynonyms,
+  saveHistory,
   streamTranslate,
 } from '../api'
 import { copyWithExecCommand, canUseClipboardApi } from '../clipboard'
@@ -26,6 +27,7 @@ import { useTranslationStore } from '../store'
 import { TextStats } from './TextStats'
 import { TokenEditor } from './TokenEditor'
 import { WordPanel } from './WordPanel'
+import { HistoryPanel } from './HistoryPanel'
 
 const DEFAULT_BREAKPOINTS = {
   threeColumnMinWidth: 1280,
@@ -66,6 +68,7 @@ export function Translator() {
     setRephraseOptions,
     setPanelLoading,
     clear,
+    bumpHistoryRefresh,
   } = useTranslationStore()
 
   const [copied, setCopied] = useState(false)
@@ -151,6 +154,14 @@ export function Translator() {
     setSelection(null, null)
     setRephraseOptions([])
 
+    let translatedFull = ''
+    let saveSucceeded = false
+
+    const captureChunk = (chunk: string) => {
+      translatedFull += chunk
+      onStreamChunk(chunk)
+    }
+
     try {
       await streamTranslate(
         {
@@ -160,10 +171,11 @@ export function Translator() {
           provider,
           model,
         },
-        onStreamChunk,
+        captureChunk,
         controller.signal
       )
       flushStreamBuffer()
+      saveSucceeded = true
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
         setError((err as Error).message)
@@ -176,6 +188,22 @@ export function Translator() {
       flushStreamBuffer()
       setTranslating(false)
       setStreaming(false)
+
+      if (
+        saveSucceeded &&
+        meta?.userLogin?.enabled &&
+        meta.userLogin.authenticated &&
+        translatedFull.trim()
+      ) {
+        void saveHistory({
+          sourceText,
+          targetText: translatedFull,
+          sourceLang,
+          targetLang,
+        })
+          .then(() => bumpHistoryRefresh())
+          .catch(() => {})
+      }
     }
   }, [
     sourceText,
@@ -183,6 +211,7 @@ export function Translator() {
     model,
     sourceLang,
     targetLang,
+    meta,
     setTranslating,
     setStreaming,
     setError,
@@ -191,6 +220,7 @@ export function Translator() {
     setRephraseOptions,
     onStreamChunk,
     flushStreamBuffer,
+    bumpHistoryRefresh,
   ])
 
   handleTranslateRef.current = handleTranslate
@@ -512,7 +542,7 @@ export function Translator() {
             className={clsx(
               'flex h-[34px] min-w-[54px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50',
               copied
-                ? 'border-green-200 bg-green-50 text-green-600'
+                ? 'border-deepl-success/30 bg-deepl-success/10 text-deepl-success'
                 : 'border-deepl-border bg-white hover:bg-deepl-light'
             )}
           >
@@ -582,11 +612,17 @@ export function Translator() {
     <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
       {isThreeColumn ? (
         <div className="grid w-full grid-cols-[1fr_minmax(260px,320px)] items-start gap-4">
-          {translationCard}
+          <div className="min-w-0">
+            {translationCard}
+            <HistoryPanel />
+          </div>
           <WordPanel mode="resident" visible {...wordPanelProps} />
         </div>
       ) : (
-        translationCard
+        <>
+          {translationCard}
+          <HistoryPanel />
+        </>
       )}
 
       {!isThreeColumn && (
@@ -598,7 +634,7 @@ export function Translator() {
       )}
 
       {error && (
-        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p className="mt-4 rounded-lg border border-deepl-error/30 bg-deepl-error/10 px-4 py-3 text-sm text-deepl-error">
           {t('error')}: {error}
         </p>
       )}

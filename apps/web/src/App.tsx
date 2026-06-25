@@ -3,6 +3,7 @@ import { Header } from './components/Header'
 import { Translator } from './components/Translator'
 import { AuthGate } from './components/AuthGate'
 import { fetchMeta } from './api'
+import { useTheme } from './hooks/useTheme'
 import { useTranslationStore } from './store'
 
 export default function App() {
@@ -10,6 +11,8 @@ export default function App() {
   const setError = useTranslationStore((s) => s.setError)
   const meta = useTranslationStore((s) => s.meta)
   const [authenticated, setAuthenticated] = useState(false)
+
+  useTheme(meta?.theme)
 
   const loadMeta = () => {
     fetchMeta()

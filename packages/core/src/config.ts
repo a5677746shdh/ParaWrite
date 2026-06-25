@@ -1,12 +1,35 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import yaml from 'js-yaml'
-import type { AlternativesSeparator, AppConfig, PublicMeta, ProviderConfig } from './types.js'
+import type {
+  AlternativesSeparator,
+  AppConfig,
+  PublicMeta,
+  PublicUserSummary,
+  ProviderConfig,
+  ThemeColors,
+  UserLoginMode,
+} from './types.js'
 import { BUILD_VERSION } from './version.generated.js'
 import { fromConfigLang, mapConfigLangRecord } from './lang-codes.js'
 
 const DEFAULT_THREE_COLUMN_MIN = 1280
 const DEFAULT_TWO_COLUMN_MIN = 768
+
+const DEFAULT_THEME: ThemeColors = {
+  primary: '#0f2b46',
+  accent: '#2d7ff9',
+  background: '#f5f7fa',
+  surface: '#ffffff',
+  border: '#d8dee9',
+  muted: '#6b7c93',
+  success: '#16a34a',
+  error: '#dc2626',
+  warning: '#f59e0b',
+  alert: '#ea580c',
+}
+
+const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/
 
 function resolveEnvVars(value: string): string {
   return value.replace(/\$\{([^}]+)\}/g, (_, name: string) => {
@@ -169,7 +192,75 @@ export function isRestartAuthEnabled(config: AppConfig): boolean {
   return !!config.auth?.restart_totp_secret?.trim()
 }
 
-export function toPublicMeta(config: AppConfig, authenticated = false): PublicMeta {
+export function getUserLoginMode(config: AppConfig): UserLoginMode {
+  return config.users?.login?.mode ?? 'disabled'
+}
+
+export function isUserLoginEnabled(config: AppConfig): boolean {
+  return getUserLoginMode(config) !== 'disabled'
+}
+
+export function resolveThemeColors(config: AppConfig): ThemeColors {
+  const theme = config.theme ?? {}
+  const resolve = (key: keyof ThemeColors): string => {
+    const value = theme[key]
+    return value && HEX_COLOR_RE.test(value) ? value : DEFAULT_THEME[key]
+  }
+  return {
+    primary: resolve('primary'),
+    accent: resolve('accent'),
+    background: resolve('background'),
+    surface: resolve('surface'),
+    border: resolve('border'),
+    muted: resolve('muted'),
+    success: resolve('success'),
+    error: resolve('error'),
+    warning: resolve('warning'),
+    alert: resolve('alert'),
+  }
+}
+
+export function getHistoryConfig(config: AppConfig) {
+  const history = config.users?.history
+  const threshold = history?.similarity_threshold ?? 0.85
+  const interval = history?.dedup_interval_seconds ?? 60
+  const pageSize = history?.page_size ?? 5
+  return {
+    similarityThreshold: Math.min(1, Math.max(0, threshold)),
+    dedupIntervalSeconds: Math.max(1, interval),
+    pageSize: Math.min(50, Math.max(1, Math.round(pageSize))),
+  }
+}
+
+export function getUserSessionTtlHours(config: AppConfig): number {
+  return config.users?.login?.session_ttl_hours ?? 168
+}
+
+export function resolveDataDir(config: AppConfig, configDir: string): string {
+  if (process.env.PARWRITE_DATA_DIR) {
+    return path.resolve(process.env.PARWRITE_DATA_DIR)
+  }
+  const dataDir = config.users?.data_dir ?? 'data'
+  return path.resolve(configDir, dataDir)
+}
+
+export function canRestartBackend(
+  config: AppConfig,
+  userLogin?: { authenticated: boolean; user: PublicUserSummary | null }
+): boolean {
+  const mode = getUserLoginMode(config)
+  if (mode === 'disabled') return true
+  if (!userLogin?.authenticated || !userLogin.user) return false
+  const allowed = config.users?.login?.allowed_usernames ?? []
+  const username = userLogin.user.username.trim().toLowerCase()
+  return allowed.some((u) => u.trim().toLowerCase() === username)
+}
+
+export function toPublicMeta(
+  config: AppConfig,
+  authenticated = false,
+  userLogin?: { authenticated: boolean; user: PublicUserSummary | null }
+): PublicMeta {
   const providers = Object.entries(config.providers).map(([id, provider]) => ({
     id,
     type: provider.type,
@@ -177,6 +268,8 @@ export function toPublicMeta(config: AppConfig, authenticated = false): PublicMe
   }))
 
   const runtimeEnv = config.app.runtime_env?.trim()
+  const loginMode = getUserLoginMode(config)
+  const loginEnabled = loginMode !== 'disabled'
 
   return {
     defaultProvider: config.app.default_provider,
@@ -188,9 +281,19 @@ export function toPublicMeta(config: AppConfig, authenticated = false): PublicMe
     layoutBreakpoints: getLayoutBreakpoints(config),
     authRequired: isAccessAuthEnabled(config),
     restartAuthRequired: isRestartAuthEnabled(config),
+    canRestartBackend: canRestartBackend(config, userLogin),
     authenticated,
     translateOnEnter: config.app.translate_on_enter ?? false,
     alternativesSeparators: getAlternativesSeparatorsMeta(config),
     phraseWordThresholds: getPhraseWordThresholdsMeta(config),
+    userLogin: {
+      enabled: loginEnabled,
+      mode: loginMode,
+      authenticated: userLogin?.authenticated ?? false,
+      user: userLogin?.user ?? null,
+      sessionTtlHours: getUserSessionTtlHours(config),
+    },
+    theme: resolveThemeColors(config),
+    historyConfig: getHistoryConfig(config),
   }
 }

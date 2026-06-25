@@ -1,4 +1,12 @@
-import type { DictionaryEntry, PublicMeta, RephraseOption, SynonymOption } from '@parawrite/core/client'
+import type {
+  DictionaryEntry,
+  HistoryPageResult,
+  PublicMeta,
+  PublicUserSummary,
+  RephraseOption,
+  SynonymOption,
+  TranslationHistoryEntry,
+} from '@parawrite/core/client'
 
 const fetchOptions: RequestInit = { credentials: 'include' }
 
@@ -158,4 +166,120 @@ export async function restartServer(totpCode?: string): Promise<void> {
     const data = await res.json().catch(() => ({}))
     throw new Error((data as { error?: string }).error ?? 'Restart failed')
   }
+}
+
+export async function registerUser(params: {
+  username: string
+  password: string
+  nickname?: string
+  rememberMe?: boolean
+}): Promise<PublicUserSummary> {
+  const res = await fetch('/api/user/register', {
+    ...fetchOptions,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error ?? 'Registration failed')
+  }
+  const data = await res.json()
+  return data.user
+}
+
+export async function loginUser(params: {
+  username: string
+  password: string
+  rememberMe?: boolean
+}): Promise<PublicUserSummary> {
+  const res = await fetch('/api/user/login', {
+    ...fetchOptions,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error ?? 'Login failed')
+  }
+  const data = await res.json()
+  return data.user
+}
+
+export async function logoutUser(): Promise<void> {
+  const res = await fetch('/api/user/logout', {
+    ...fetchOptions,
+    method: 'POST',
+  })
+  if (!res.ok) throw new Error('Logout failed')
+}
+
+export async function fetchHistory(
+  filter: 'all' | 'favorites' = 'favorites',
+  page = 1,
+  pageSize?: number
+): Promise<HistoryPageResult> {
+  const params = new URLSearchParams({
+    filter,
+    page: String(page),
+  })
+  if (pageSize !== undefined) {
+    params.set('pageSize', String(pageSize))
+  }
+  const res = await fetch(`/api/history?${params}`, fetchOptions)
+  if (!res.ok) throw new Error('Failed to load history')
+  return res.json()
+}
+
+export async function saveHistory(params: {
+  sourceText: string
+  targetText: string
+  sourceLang: string
+  targetLang: string
+}): Promise<TranslationHistoryEntry> {
+  const res = await fetch('/api/history', {
+    ...fetchOptions,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) throw new Error('Failed to save history')
+  const data = await res.json()
+  return data.entry
+}
+
+export async function addHistoryFavorite(params: {
+  sourceText: string
+  targetText: string
+  sourceLang: string
+  targetLang: string
+}): Promise<TranslationHistoryEntry> {
+  const res = await fetch('/api/history/favorite', {
+    ...fetchOptions,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) throw new Error('Failed to add favorite')
+  const data = await res.json()
+  return data.entry
+}
+
+export async function toggleHistoryFavorite(id: number): Promise<TranslationHistoryEntry> {
+  const res = await fetch(`/api/history/${id}/favorite`, {
+    ...fetchOptions,
+    method: 'PATCH',
+  })
+  if (!res.ok) throw new Error('Failed to toggle favorite')
+  const data = await res.json()
+  return data.entry
+}
+
+export async function deleteHistoryEntry(id: number): Promise<void> {
+  const res = await fetch(`/api/history/${id}`, {
+    ...fetchOptions,
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error('Failed to delete history entry')
 }

@@ -1,43 +1,51 @@
-# ParaWrite configuration template.
-# Copy to parawrite.yaml (gitignored) for local development.
-# Local parawrite.yaml may contain plain-text API keys; only *.example.yaml files are synced to GitHub.
+# ParaWrite 配置模板 / Configuration template
+# 复制为 parawrite.yaml 用于本地开发（parawrite.yaml 已被 git 忽略）
+# Copy to parawrite.yaml for local development (parawrite.yaml is gitignored)
 
+# ---------------------------------------------------------------------------
+# 服务监听 / Server
+# ---------------------------------------------------------------------------
 server:
-  host: 0.0.0.0
-  port: 8787
+  host: 0.0.0.0   # 监听地址；0.0.0.0 表示所有网卡 / bind address
+  port: 8787      # HTTP 端口 / HTTP port
 
+# ---------------------------------------------------------------------------
+# 应用行为 / Application
+# ---------------------------------------------------------------------------
 app:
-  default_provider: openai
-  default_model: gpt-4o-mini
-  auto_translate_delay_seconds: 2
-  runtime_env: dev
-  translate_on_enter: false
-  alternatives_separator:
-    default: comma
-    by_language:
+  default_provider: openai          # 默认 LLM 服务商 ID，须与 providers 中的键名一致
+  default_model: gpt-4o-mini        # 默认模型 ID；可省略，则使用 provider 内 default 模型
+  auto_translate_delay_seconds: 2   # 输入后自动翻译延迟（秒）；0 表示关闭
+  runtime_env: dev                  # 可选，显示在版本号旁的环境标识
+  translate_on_enter: false         # true：Enter 翻译；false：Ctrl/Cmd+Enter 翻译
+  alternatives_separator:           # 同义词/改写候选项之间的分隔符
+    default: comma                  # comma | period
+    by_language:                    # 按 ISO 639-2 语言代码覆盖（如 zho、jpn）
       zho: period
       jpn: period
-  phrase_word_threshold:
+  phrase_word_threshold:            # 选中超过此词数视为短语（隐藏同义词/词典）
     default: 4
     by_language:
       zho: 5
       jpn: 5
-  layout:
-    three_column_min_width: 1280
-    two_column_min_width: 768
+  layout:                           # 响应式布局断点（像素）
+    three_column_min_width: 1280    # ≥ 此宽度：翻译区 + 词语面板三列
+    two_column_min_width: 768       # ≥ 此宽度：源/译文双列
 
+# ---------------------------------------------------------------------------
+# LLM 服务商 / Providers
+# ---------------------------------------------------------------------------
 providers:
   openai:
-    type: openai_compatible
+    type: openai_compatible         # openai_compatible | claude | ollama
     base_url: https://api.openai.com/v1
-    api_key: ${OPENAI_API_KEY}
-    # proxy:
+    api_key: ${OPENAI_API_KEY}      # 支持 ${ENV_VAR} 环境变量替换
+    # proxy:                        # 可选 HTTP/SOCKS5 代理
     #   url: http://user:password@127.0.0.1:7890
-    #   url: socks5://user:password@127.0.0.1:1080
     models:
       - id: gpt-4o-mini
         name: GPT-4o Mini
-        default: true
+        default: true               # 该 provider 的默认模型
       - id: gpt-4o
         name: GPT-4o
 
@@ -56,15 +64,58 @@ providers:
       - id: qwen2.5:7b
         name: Qwen 2.5 7B
 
+# ---------------------------------------------------------------------------
+# 词典 / Dictionary
+# ---------------------------------------------------------------------------
 dictionary:
-  free_dictionary: true
-  wiktionary: true
-  llm_fallback: true
+  free_dictionary: true   # 英语：Free Dictionary API
+  wiktionary: true        # 多语言：Wiktionary
+  llm_fallback: true      # 以上均无结果时用 LLM 生成释义
 
+# ---------------------------------------------------------------------------
+# 自定义术语表 / Glossary（相对 config 目录）
+# ---------------------------------------------------------------------------
 glossary:
   file: custom-dictionary.yaml
 
+# ---------------------------------------------------------------------------
+# 部署级门禁（TOTP）/ Deployment access (TOTP)
+# 与下方 users.login 的用户账密登录相互独立
+# ---------------------------------------------------------------------------
 auth:
-  access_totp_secret: ${ACCESS_TOTP_SECRET}
-  restart_totp_secret: ${RESTART_TOTP_SECRET}
-  session_ttl_hours: 24
+  access_totp_secret: ${ACCESS_TOTP_SECRET}    # 设置后，进入应用需 TOTP 验证码
+  restart_totp_secret: ${RESTART_TOTP_SECRET}  # 设置后，重启后端需额外 TOTP
+  session_ttl_hours: 24                        # TOTP 会话 Cookie 有效期（小时）
+
+# ---------------------------------------------------------------------------
+# 用户登录与翻译历史 / User login & translation history（SQLite）
+# ---------------------------------------------------------------------------
+users:
+  login:
+    # 登录模式：disabled（关闭）| restricted（仅白名单可注册/登录）| open（任意用户）
+    mode: disabled
+    # 白名单用户名：restricted 模式仅限制注册；open 模式控制「重启后端」按钮可见性
+    allowed_usernames:
+      - alice
+      - bob
+    session_ttl_hours: 168   # 用户登录会话有效期（小时），默认 7 天
+  history:
+    similarity_threshold: 0.85    # 全部记录去重：原文相似度阈值 0~1
+    dedup_interval_seconds: 60    # 去重时间窗口（秒）
+    page_size: 5                  # 历史记录每页条数
+  data_dir: data                  # SQLite 数据目录（相对 config 目录）；可用 PARWRITE_DATA_DIR 覆盖
+
+# ---------------------------------------------------------------------------
+# 界面主题色 / UI theme（#RRGGBB）
+# ---------------------------------------------------------------------------
+theme:
+  primary: '#0f2b46'      # 主色、标题与正文
+  accent: '#2d7ff9'       # 强调色、主按钮
+  background: '#f5f7fa'   # 页面背景
+  surface: '#ffffff'      # 卡片、弹窗背景
+  border: '#d8dee9'       # 边框
+  muted: '#6b7c93'        # 次要文字（如历史记录原文）
+  success: '#16a34a'
+  error: '#dc2626'      # 错误提示（表单校验失败等）
+  warning: '#f59e0b'    # 轻度警告（如收藏星标）
+  alert: '#ea580c'      # 强警告（重启后端、退出登录等）

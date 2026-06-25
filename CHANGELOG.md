@@ -2,6 +2,21 @@
 
 All notable changes to ParaWrite are documented in this file.
 
+## [0.5.0] — 2026-06-25
+
+### Added
+- Optional user login and translation history (SQLite) — `users.login.mode`: disabled, restricted, or open
+- History panel with favorites, pagination, and auto-save after successful translation
+- Custom theme colors in YAML (`theme`) with CSS variable mapping
+- UI design guide at `docs/UI-DESIGN.md`
+- Remember-me option on login (session vs persistent cookie)
+- Restricted registration whitelist (`allowed_usernames`) — existing users can always sign in
+
+### Changed
+- Reset dialog renamed to Options — UI language, reload, restart, and logout grouped under settings gear
+- Semantic color tokens (`deepl-error`, `deepl-success`, `deepl-alert`, etc.) replace hardcoded reds/greens
+- Provider/model select auto-sizes to label width; header layout polish
+
 ## [0.4.1] — 2026-06-25
 
 ### Added

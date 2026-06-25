@@ -5,10 +5,16 @@ export default {
     extend: {
       colors: {
         deepl: {
-          blue: '#0f2b46',
-          accent: '#2d7ff9',
-          light: '#f5f7fa',
-          border: '#d8dee9',
+          blue: 'var(--color-primary)',
+          accent: 'var(--color-accent)',
+          light: 'var(--color-background)',
+          border: 'var(--color-border)',
+          muted: 'var(--color-muted)',
+          surface: 'var(--color-surface)',
+          success: 'var(--color-success)',
+          error: 'var(--color-error)',
+          warning: 'var(--color-warning)',
+          alert: 'var(--color-alert)',
         },
       },
       fontFamily: {

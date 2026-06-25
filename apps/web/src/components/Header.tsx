@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useRef, useLayoutEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslationStore } from '../store'
@@ -9,7 +9,10 @@ import appIcon from '../assets/app-icon.png'
 const PROVIDER_MODEL_SEP = '::'
 
 const selectClass =
-  'h-10 rounded-lg border border-deepl-border bg-white px-3 py-2 text-sm outline-none focus:border-deepl-accent'
+  'h-10 rounded-lg border border-deepl-border bg-white px-3 py-0 text-sm leading-10 text-deepl-blue outline-none focus:border-deepl-accent'
+
+const PROVIDER_SELECT_MIN_WIDTH = 120
+const PROVIDER_SELECT_MAX_WIDTH = 320
 
 function HeaderIconButton({
   onClick,
@@ -74,13 +77,11 @@ function SwapIcon() {
   )
 }
 
-function ResetIcon() {
+function SettingsIcon() {
   return (
     <HeaderIcon>
-      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-      <path d="M21 3v5h-5" />
-      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-      <path d="M3 21v-5h5" />
+      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
     </HeaderIcon>
   )
 }
@@ -115,8 +116,9 @@ export function Header() {
 
   const canSwapLanguages = sourceLang !== 'auto' || Boolean(detectedSourceLang)
 
-  const [resetOpen, setResetOpen] = useState(false)
+  const [optionsOpen, setOptionsOpen] = useState(false)
   const [restartMessage, setRestartMessage] = useState<string | null>(null)
+  const refreshMeta = useTranslationStore((s) => s.refreshMeta)
 
   const changeUiLang = (lang: string) => {
     i18n.changeLanguage(lang)
@@ -132,6 +134,25 @@ export function Header() {
         label: `${p.id}-${m.name}`,
       }))
     ) ?? []
+
+  const providerModelLabel =
+    providerModelOptions.find((o) => o.value === providerModelValue)?.label ?? ''
+
+  const providerMeasureRef = useRef<HTMLSpanElement>(null)
+  const [providerSelectWidth, setProviderSelectWidth] = useState(PROVIDER_SELECT_MIN_WIDTH)
+
+  useLayoutEffect(() => {
+    const el = providerMeasureRef.current
+    if (!el) return
+    const contentWidth = el.offsetWidth
+    const chromeWidth = 36 + 24
+    setProviderSelectWidth(
+      Math.min(
+        PROVIDER_SELECT_MAX_WIDTH,
+        Math.max(PROVIDER_SELECT_MIN_WIDTH, contentWidth + chromeWidth)
+      )
+    )
+  }, [providerModelLabel, providerModelOptions])
 
   const handleProviderModelChange = (value: string) => {
     const [p, m] = value.split(PROVIDER_MODEL_SEP)
@@ -187,45 +208,38 @@ export function Header() {
               onChange={setTargetLang}
             />
 
-            {meta && providerModelOptions.length > 0 && (
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-deepl-blue/70">{t('providerModel')}</span>
-                <select
-                  value={providerModelValue}
-                  onChange={(e) => handleProviderModelChange(e.target.value)}
-                  className={selectClass}
-                >
-                  {providerModelOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
             <div className="flex shrink-0 items-end gap-2">
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-deepl-blue/70">{t('uiLanguage')}</span>
-                <select
-                  value={i18n.language}
-                  onChange={(e) => changeUiLang(e.target.value)}
-                  className={selectClass}
-                >
-                  <option value="en">{t('english')}</option>
-                  <option value="zh">{t('chinese')}</option>
-                </select>
-              </label>
+              {meta && providerModelOptions.length > 0 && (
+                <label className="relative flex flex-col gap-1 text-sm">
+                  <span className="font-medium text-deepl-blue/70">{t('providerModel')}</span>
+                  <span
+                    ref={providerMeasureRef}
+                    aria-hidden
+                    className="pointer-events-none invisible absolute whitespace-nowrap text-sm leading-10"
+                  >
+                    {providerModelLabel}
+                  </span>
+                  <select
+                    value={providerModelValue}
+                    onChange={(e) => handleProviderModelChange(e.target.value)}
+                    className={selectClass}
+                    style={{ width: providerSelectWidth }}
+                  >
+                    {providerModelOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
-              <button
-                type="button"
-                onClick={() => setResetOpen(true)}
-                title={t('reset')}
-                aria-label={t('reset')}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-deepl-border text-deepl-blue hover:bg-deepl-light"
+              <HeaderIconButton
+                onClick={() => setOptionsOpen(true)}
+                title={t('settings')}
               >
-                <ResetIcon />
-              </button>
+                <SettingsIcon />
+              </HeaderIconButton>
             </div>
           </div>
         </div>
@@ -235,13 +249,19 @@ export function Header() {
       </header>
 
       <ResetDialog
-        open={resetOpen}
+        open={optionsOpen}
         version={meta?.version ?? '0.1.0'}
         runtimeEnv={meta?.runtimeEnv}
+        uiLanguage={i18n.language}
         restartAuthRequired={meta?.restartAuthRequired}
-        onClose={() => setResetOpen(false)}
+        canRestartBackend={meta?.canRestartBackend}
+        userLoginEnabled={meta?.userLogin?.enabled}
+        userAuthenticated={meta?.userLogin?.authenticated}
+        onClose={() => setOptionsOpen(false)}
+        onUiLanguageChange={changeUiLang}
         onReloadFrontend={handleReloadFrontend}
         onRestartSuccess={handleRestartSuccess}
+        onLogout={() => void refreshMeta()}
       />
     </>
   )
