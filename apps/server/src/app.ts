@@ -10,7 +10,7 @@ import {
   buildSynonymsPrompt,
   buildTranslatePrompt,
   DictionaryService,
-  getConfigDir,
+  getAppRoot,
   getDefaultModel,
   getEngineForProvider,
   getHistoryConfig,
@@ -75,8 +75,8 @@ function getUserLoginMeta(
 
 export function createApp(config: AppConfig, configPath?: string): Hono {
   const dictionary = new DictionaryService(config)
-  const configDir = getConfigDir(configPath)
-  const glossary = GlossaryService.fromConfig(configDir, config.glossary?.file)
+  const appRoot = getAppRoot(configPath)
+  const glossary = GlossaryService.fromConfig(appRoot, config.glossary?.file)
   const authManager = new AuthManager(config.auth?.session_ttl_hours ?? 24)
   const accessAuthEnabled = isAccessAuthEnabled(config)
   const restartAuthEnabled = isRestartAuthEnabled(config)
@@ -88,7 +88,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
   let userSessionManager: UserSessionManager | null = null
 
   if (userLoginEnabled) {
-    const dataDir = resolveDataDir(config, configDir)
+    const dataDir = resolveDataDir(config, configPath)
     const db = openDatabase(dataDir)
     userService = new UserService(db)
     const historyConfig = getHistoryConfig(config)

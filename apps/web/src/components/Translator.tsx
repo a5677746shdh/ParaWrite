@@ -28,6 +28,7 @@ import { TextStats } from './TextStats'
 import { TokenEditor } from './TokenEditor'
 import { WordPanel } from './WordPanel'
 import { HistoryPanel } from './HistoryPanel'
+import { textButtonPx } from '../ui'
 
 const DEFAULT_BREAKPOINTS = {
   threeColumnMinWidth: 1280,
@@ -473,14 +474,14 @@ export function Translator() {
             type="button"
             onClick={handleTranslate}
             disabled={isTranslating || !sourceText.trim()}
-            className="rounded-lg bg-deepl-accent px-4 py-1.5 text-sm font-medium text-white hover:bg-deepl-accent/90 disabled:opacity-50"
+            className={clsx('rounded-lg bg-deepl-accent py-1.5 text-sm font-medium text-white hover:bg-deepl-accent/90 disabled:opacity-50', textButtonPx)}
           >
             {isTranslating ? t('translating') : t('translate')}
           </button>
           <button
             type="button"
             onClick={clear}
-            className="rounded-lg border border-deepl-border bg-white px-3 py-1.5 text-sm hover:bg-deepl-light"
+            className={clsx('rounded-lg border border-deepl-border bg-white py-1.5 text-sm hover:bg-deepl-light', textButtonPx)}
           >
             {t('clear')}
           </button>
@@ -540,7 +541,8 @@ export function Translator() {
             title={copied ? t('copied') : t('copy')}
             aria-label={copied ? t('copied') : t('copy')}
             className={clsx(
-              'flex h-[34px] min-w-[54px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50',
+              'flex h-[34px] min-w-[54px] items-center justify-center rounded-lg border py-1.5 text-sm disabled:opacity-50',
+              textButtonPx,
               copied
                 ? 'border-deepl-success/30 bg-deepl-success/10 text-deepl-success'
                 : 'border-deepl-border bg-white hover:bg-deepl-light'
@@ -568,7 +570,7 @@ export function Translator() {
             type="button"
             onClick={speak}
             disabled={!targetText}
-            className="rounded-lg border border-deepl-border bg-white px-3 py-1.5 text-sm hover:bg-deepl-light disabled:opacity-50"
+            className={clsx('rounded-lg border border-deepl-border bg-white py-1.5 text-sm hover:bg-deepl-light disabled:opacity-50', textButtonPx)}
           >
             {t('speak')}
           </button>

@@ -2,6 +2,7 @@ import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import { verifyAccess } from '../api'
+import { textButtonPx } from '../ui'
 
 interface AuthGateProps {
   onAuthenticated: () => void
@@ -75,7 +76,7 @@ export function AuthGate({ onAuthenticated }: AuthGateProps) {
           type="submit"
           disabled={code.length !== 6 || loading}
           className={clsx(
-            'mt-5 w-full rounded-lg px-4 py-2.5 text-sm font-medium disabled:opacity-50',
+            `mt-5 w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-50 ${textButtonPx}`,
             error
               ? 'bg-deepl-error text-white hover:bg-deepl-error'
               : 'bg-deepl-accent text-white hover:bg-deepl-accent/90'

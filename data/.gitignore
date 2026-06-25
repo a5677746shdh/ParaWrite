@@ -1,2 +1,3 @@
+# SQLite user data (users.data_dir)
 *.db
 *.db-*

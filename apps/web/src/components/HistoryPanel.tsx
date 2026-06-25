@@ -9,6 +9,7 @@ import {
 } from '../api'
 import { useTranslationStore } from '../store'
 import { UserAuthDialog } from './UserAuthDialog'
+import { textButtonPx } from '../ui'
 
 function FavoriteIcon({ filled }: { filled: boolean }) {
   return (
@@ -30,7 +31,7 @@ function FavoriteIcon({ filled }: { filled: boolean }) {
 
 const tabButtonClass = (active: boolean) =>
   clsx(
-    'flex h-full items-center rounded-md px-3 text-sm font-medium',
+    `flex h-full items-center rounded-md ${textButtonPx} text-sm font-medium`,
     active ? 'bg-deepl-accent text-white' : 'text-deepl-blue hover:bg-deepl-light'
   )
 
@@ -158,7 +159,7 @@ export function HistoryPanel() {
               <button
                 type="button"
                 onClick={() => setAuthOpen(true)}
-                className="h-10 rounded-lg bg-deepl-accent px-4 text-sm font-medium text-white hover:bg-deepl-accent/90"
+                className={clsx('h-10 rounded-lg bg-deepl-accent text-sm font-medium text-white hover:bg-deepl-accent/90', textButtonPx)}
               >
                 {t('historyLogin')}
               </button>
@@ -177,17 +178,17 @@ export function HistoryPanel() {
                 <div className="flex h-10 rounded-lg border border-deepl-border p-0.5">
                   <button
                     type="button"
-                    onClick={() => handleFilterChange('all')}
-                    className={tabButtonClass(filter === 'all')}
-                  >
-                    {t('historyAll')}
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => handleFilterChange('favorites')}
                     className={tabButtonClass(filter === 'favorites')}
                   >
                     {t('historyFavorites')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFilterChange('all')}
+                    className={tabButtonClass(filter === 'all')}
+                  >
+                    {t('historyAll')}
                   </button>
                 </div>
                 <button
@@ -255,7 +256,7 @@ export function HistoryPanel() {
                   type="button"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1 || loading}
-                  className="h-10 rounded-lg border border-deepl-border px-3 text-sm hover:bg-deepl-light disabled:opacity-50"
+                  className={clsx('h-10 rounded-lg border border-deepl-border text-sm hover:bg-deepl-light disabled:opacity-50', textButtonPx)}
                 >
                   {t('historyPagePrev')}
                 </button>
@@ -284,7 +285,7 @@ export function HistoryPanel() {
                   type="button"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages || loading}
-                  className="h-10 rounded-lg border border-deepl-border px-3 text-sm hover:bg-deepl-light disabled:opacity-50"
+                  className={clsx('h-10 rounded-lg border border-deepl-border text-sm hover:bg-deepl-light disabled:opacity-50', textButtonPx)}
                 >
                   {t('historyPageNext')}
                 </button>

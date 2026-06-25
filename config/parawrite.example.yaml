@@ -1,6 +1,9 @@
 # ParaWrite 配置模板 / Configuration template
 # 复制为 parawrite.yaml 用于本地开发（parawrite.yaml 已被 git 忽略）
 # Copy to parawrite.yaml for local development (parawrite.yaml is gitignored)
+#
+# 文件路径：相对路径均相对于项目根目录（config/ 的上一级）；绝对路径原样使用
+# File paths: relative paths resolve from the app root (parent of config/); absolute paths are used as-is
 
 # ---------------------------------------------------------------------------
 # 服务监听 / Server
@@ -73,10 +76,10 @@ dictionary:
   llm_fallback: true      # 以上均无结果时用 LLM 生成释义
 
 # ---------------------------------------------------------------------------
-# 自定义术语表 / Glossary（相对 config 目录）
+# 自定义术语表 / Glossary（相对项目根目录）
 # ---------------------------------------------------------------------------
 glossary:
-  file: custom-dictionary.yaml
+  file: config/custom-dictionary.yaml
 
 # ---------------------------------------------------------------------------
 # 部署级门禁（TOTP）/ Deployment access (TOTP)
@@ -103,7 +106,7 @@ users:
     similarity_threshold: 0.85    # 全部记录去重：原文相似度阈值 0~1
     dedup_interval_seconds: 60    # 去重时间窗口（秒）
     page_size: 5                  # 历史记录每页条数
-  data_dir: data                  # SQLite 数据目录（相对 config 目录）；可用 PARWRITE_DATA_DIR 覆盖
+  data_dir: data                  # SQLite 数据目录（相对项目根目录）；可用 PARWRITE_DATA_DIR 覆盖
 
 # ---------------------------------------------------------------------------
 # 界面主题色 / UI theme（#RRGGBB）

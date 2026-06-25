@@ -1,5 +1,5 @@
 # Custom glossary — user-specified translations per language (ISO 639-2 keys).
-# Copy to custom-dictionary.yaml and edit locally.
+# Copy to config/custom-dictionary.yaml and edit locally.
 # Each entry maps the same concept across languages; matched terms are injected into the translation prompt.
 
 entries:

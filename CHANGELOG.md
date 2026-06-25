@@ -2,6 +2,17 @@
 
 All notable changes to ParaWrite are documented in this file.
 
+## [0.5.1] — 2026-06-25
+
+### Added
+- Startup check for configured model API availability with per-model log output
+
+### Changed
+- User data directory defaults to project root `data/` (not `config/data/`); beta compose mounts `/data` volume
+- Config file paths (`glossary.file`, `users.data_dir`) resolve relative to app root
+- UI button padding standard (`px-6`); compact chips for synonyms and alternative expressions
+- History filter tabs: Favorites left, All right
+
 ## [0.5.0] — 2026-06-25
 
 ### Added

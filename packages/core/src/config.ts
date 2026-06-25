@@ -83,6 +83,19 @@ export function getConfigDir(configPath?: string): string {
   return path.dirname(filePath)
 }
 
+/** Application root — parent directory of the config folder (e.g. repo root or `/app`). */
+export function getAppRoot(configPath?: string): string {
+  return path.resolve(getConfigDir(configPath), '..')
+}
+
+/** Resolve a config file path: absolute paths unchanged, relative paths from app root. */
+export function resolveAppPath(relativePath: string, configPath?: string): string {
+  if (path.isAbsolute(relativePath)) {
+    return relativePath
+  }
+  return path.resolve(getAppRoot(configPath), relativePath)
+}
+
 export function loadConfig(configPath?: string): AppConfig {
   const filePath = configPath ?? findConfigPath()
   const raw = fs.readFileSync(filePath, 'utf-8')
@@ -236,12 +249,12 @@ export function getUserSessionTtlHours(config: AppConfig): number {
   return config.users?.login?.session_ttl_hours ?? 168
 }
 
-export function resolveDataDir(config: AppConfig, configDir: string): string {
+export function resolveDataDir(config: AppConfig, configPath?: string): string {
   if (process.env.PARWRITE_DATA_DIR) {
     return path.resolve(process.env.PARWRITE_DATA_DIR)
   }
   const dataDir = config.users?.data_dir ?? 'data'
-  return path.resolve(configDir, dataDir)
+  return resolveAppPath(dataDir, configPath)
 }
 
 export function canRestartBackend(

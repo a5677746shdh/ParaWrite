@@ -1,4 +1,7 @@
 # ParaWrite Docker 配置示例 / Docker configuration example
+#
+# 文件路径：相对路径均相对于 /app（config/ 的上一级）
+# File paths: relative paths resolve from /app (parent of config/)
 
 server:
   host: 0.0.0.0
@@ -35,7 +38,7 @@ dictionary:
   llm_fallback: true
 
 glossary:
-  file: custom-dictionary.yaml
+  file: config/custom-dictionary.yaml
 
 auth:
   access_totp_secret: ${ACCESS_TOTP_SECRET}

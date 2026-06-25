@@ -2,7 +2,7 @@
 
 ParaWrite is an open-source writing assistant inspired by DeepL's "Alternatives" feature. It helps you polish translations with context-aware synonyms, dictionary lookups, and sentence rephrasing—all powered by configurable LLM APIs.
 
-**Version 0.5.0** — see [CHANGELOG.md](CHANGELOG.md) for release history.
+**Version 0.5.1** — see [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Features
 
@@ -31,6 +31,7 @@ parawrite/
 │   └── core/         # Shared types, engines, dictionary, segmenter
 ├── config/
 │   └── parawrite.example.yaml
+├── data/             # SQLite user data (gitignored *.db)
 ├── scripts/          # Build helpers (version generation)
 ├── docker/           # Dockerfile and compose
 ├── artifacts/        # Local build outputs (gitignored)

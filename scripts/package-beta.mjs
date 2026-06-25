@@ -39,6 +39,7 @@ const BETA_COMPOSE = `services:
       - '13536:8787'
     volumes:
       - /vol1/1000/DockerFiles/paraWriteBeta/config:/app/config
+      - /vol1/1000/DockerFiles/paraWriteBeta/data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://localhost:8787/health']
@@ -117,11 +118,13 @@ const manifest = {
     Dockerfile: 'Self-contained image build from pre-built artifacts',
     'docker-compose.yml': 'Beta deployment compose (port 13536)',
     config: 'Example configuration — mount host config dir in compose',
+    data: 'SQLite user data — mount host data dir in compose',
   },
   docker: {
     build: 'docker compose up --build',
     port: 13536,
     configMount: '/vol1/1000/DockerFiles/paraWriteBeta/config:/app/config',
+    dataMount: '/vol1/1000/DockerFiles/paraWriteBeta/data:/app/data',
     health: 'GET /health',
   },
 }

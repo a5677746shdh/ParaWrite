@@ -1,10 +1,12 @@
 import { useTranslation } from 'react-i18next'
+import clsx from 'clsx'
 import { diffHighlight } from '@parawrite/core/client'
 import type {
   DictionaryEntry,
   RephraseOption,
   SynonymOption,
 } from '@parawrite/core/client'
+import { textButtonPx, optionChipClass, optionListButtonClass } from '../ui'
 
 interface WordPanelProps {
   mode: 'resident' | 'modal' | 'sheet'
@@ -85,7 +87,7 @@ export function WordPanel({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-2 py-1 text-sm text-deepl-blue/60 hover:bg-deepl-light"
+            className={clsx('rounded-lg py-1 text-sm text-deepl-blue/60 hover:bg-deepl-light', textButtonPx)}
           >
             ✕
           </button>
@@ -106,13 +108,13 @@ export function WordPanel({
               {synonyms.length === 0 ? (
                 <p className="text-sm text-deepl-blue/50">{t('noResults')}</p>
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {synonyms.map((syn) => (
                     <button
                       key={syn.word}
                       type="button"
                       onClick={() => onApplySynonym(syn.word)}
-                      className="rounded-lg border border-deepl-accent/30 bg-deepl-accent/10 px-3 py-1.5 text-sm hover:bg-deepl-accent/20"
+                      className={optionChipClass}
                       title={syn.note}
                     >
                       {syn.word}
@@ -156,13 +158,13 @@ export function WordPanel({
             {rephraseOptions.length === 0 ? (
               <p className="text-sm text-deepl-blue/50">{t('noResults')}</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-1.5">
                 {rephraseOptions.map((opt) => (
                   <li key={opt.text}>
                     <button
                       type="button"
                       onClick={() => onApplyRephrase(opt.text)}
-                      className="w-full rounded-lg border border-deepl-border px-3 py-2 text-left text-sm hover:border-deepl-accent hover:bg-deepl-light"
+                      className={optionListButtonClass}
                     >
                       {originalSentence ? (
                         <HighlightedAlternative

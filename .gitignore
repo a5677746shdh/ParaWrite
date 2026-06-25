@@ -8,6 +8,7 @@ ai-memory/
 .DS_Store
 config/parawrite.yaml
 config/parawrite.local.yaml
+config/data/
 .env
 .env.*
 !.env.example

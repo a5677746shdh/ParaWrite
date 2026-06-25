@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import { restartServer, logoutUser } from '../api'
+import { textButtonPx } from '../ui'
 
 function formatVersionDisplay(version: string, runtimeEnv?: string): string {
   const displayVersion = version.replace('+', '.')
@@ -97,7 +98,7 @@ export function ResetDialog({
       : t('restartBackend')
 
   const actionButtonClass =
-    'rounded-lg px-4 py-2.5 text-center text-sm hover:bg-deepl-light'
+    `rounded-lg ${textButtonPx} py-2.5 text-center text-sm hover:bg-deepl-light`
 
   const selectClass =
     'h-10 flex-1 rounded-lg border border-deepl-border bg-white px-3 py-0 text-sm leading-10 outline-none focus:border-deepl-accent'
@@ -183,7 +184,8 @@ export function ResetDialog({
                 onClick={() => void handleRestart()}
                 disabled={(restartAuthRequired && totpCode.length !== 6) || restarting}
                 className={clsx(
-                  'rounded-lg px-4 py-2.5 text-center text-sm font-medium disabled:opacity-50',
+                  'rounded-lg py-2.5 text-center text-sm font-medium disabled:opacity-50',
+                  textButtonPx,
                   restartError
                     ? 'bg-deepl-error text-white hover:bg-deepl-error'
                     : 'bg-deepl-alert text-white hover:bg-deepl-alert/90'

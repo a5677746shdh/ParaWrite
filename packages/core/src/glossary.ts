@@ -14,8 +14,8 @@ interface GlossaryFile {
   }>
 }
 
-export function loadGlossary(configDir: string, fileName: string): GlossaryEntry[] {
-  const filePath = path.resolve(configDir, fileName)
+export function loadGlossary(appRoot: string, fileName: string): GlossaryEntry[] {
+  const filePath = path.resolve(appRoot, fileName)
   if (!fs.existsSync(filePath)) {
     console.warn(`[parawrite] Glossary file not found: ${filePath}`)
     return []
@@ -124,9 +124,9 @@ export class GlossaryService {
     this.entries = entries
   }
 
-  static fromConfig(configDir: string, fileName?: string): GlossaryService {
+  static fromConfig(appRoot: string, fileName?: string): GlossaryService {
     if (!fileName) return new GlossaryService([])
-    return new GlossaryService(loadGlossary(configDir, fileName))
+    return new GlossaryService(loadGlossary(appRoot, fileName))
   }
 
   findRelevant(sourceText: string, sourceLang6391: string): GlossaryEntry[] {

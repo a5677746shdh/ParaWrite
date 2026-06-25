@@ -42,6 +42,8 @@ Opacity variants on primary text use `text-deepl-blue/60`, `/70` for labels and 
 | Card / pane inner padding | `p-4` |
 | Pane footer | `pt-3 gap-3` |
 | Button groups | `gap-2` |
+| Word panel option chips | `gap-1.5` |
+| Word panel alternative list | `space-y-1.5` |
 | Header controls | `gap-3` |
 | Major layout gaps | `gap-4` |
 | Form field label to input | `gap-1` |
@@ -57,17 +59,41 @@ Opacity variants on primary text use `text-deepl-blue/60`, `/70` for labels and 
 
 ## Buttons
 
+Shared constants live in `apps/web/src/ui.ts`.
+
+**Standard text button** — dialogs, toolbars, history pagination; horizontal padding `px-6` (`textButtonPx`):
+
+```
+rounded-lg … px-6 py-2 text-sm
+```
+
 **Primary** — filled accent:
 
 ```
-rounded-lg bg-deepl-accent px-4 py-2 text-sm font-medium text-white hover:bg-deepl-accent/90
+rounded-lg bg-deepl-accent px-6 py-2 text-sm font-medium text-white hover:bg-deepl-accent/90
 ```
 
 **Secondary** — bordered white:
 
 ```
-rounded-lg border border-deepl-border bg-white hover:bg-deepl-light
+rounded-lg border border-deepl-border bg-white px-6 hover:bg-deepl-light
 ```
+
+**Compact option chip** — synonym tags in the word panel (`optionChipClass`); tighter than standard text buttons:
+
+```
+rounded-lg border border-deepl-accent/30 bg-deepl-accent/10 px-2 py-1 text-sm hover:bg-deepl-accent/20
+```
+
+Wrap chips in `flex flex-wrap gap-1.5`.
+
+**Compact option list row** — alternative expressions in the word panel (`optionListButtonClass`):
+
+```
+w-full rounded-lg border border-deepl-border px-2 py-1.5 text-left text-sm hover:border-deepl-accent hover:bg-deepl-light
+```
+
+Stack rows with `space-y-1.5`.
 
 **Icon button (header)** — `h-10 w-10`
 
@@ -87,10 +113,18 @@ rounded-lg border border-deepl-border bg-white hover:bg-deepl-light
 - Translation card: two-column grid `grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)]` with 1px divider
 - Three-column mode: translation + history in left column; word panel `minmax(260px, 320px)` on the right
 
+## Word panel
+
+- Section order: synonyms → dictionary → alternatives
+- **Synonyms**: compact chips (`optionChipClass`), `flex flex-wrap gap-1.5`
+- **Alternatives**: full-width compact rows (`optionListButtonClass`), `space-y-1.5`; changed phrases highlighted with `bg-amber-100`
+- Close control (modal/sheet): standard text button padding (`textButtonPx`)
+- Resident mode: fixed right column; modal/sheet on narrow viewports
+
 ## History panel
 
 - Placed directly below the translation card (`mt-4`)
-- Header: tab switcher (All / Favorites) + icon-only add-favorite button (`h-9 w-9`)
+- Header: tab switcher (**Favorites** left, **All** right) + icon-only add-favorite button (`h-10 w-10`)
 - List height grows with current page content (no fixed max-height scroll)
 - Pagination footer: `h-10` prev/next buttons, page indicator `{{page}} / {{total}}`
 - Page size configured via `users.history.page_size` in YAML (default 5)

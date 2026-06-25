@@ -1,6 +1,12 @@
 import { serve } from '@hono/node-server'
 import { createApp } from './app.js'
-import { BUILD_VERSION, findConfigPath, loadConfig } from '@parawrite/core'
+import {
+  BUILD_VERSION,
+  checkConfiguredModelAvailability,
+  findConfigPath,
+  loadConfig,
+  logModelAvailabilityResults,
+} from '@parawrite/core'
 
 const startedAt = new Date()
 
@@ -15,6 +21,9 @@ try {
 }
 
 const app = createApp(config, configPath)
+
+const modelAvailability = await checkConfiguredModelAvailability(config)
+logModelAvailabilityResults(modelAvailability)
 
 serve(
   {

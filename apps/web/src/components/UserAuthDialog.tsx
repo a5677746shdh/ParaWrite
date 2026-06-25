@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import { loginUser, registerUser } from '../api'
+import { textButtonPx } from '../ui'
 
 interface UserAuthDialogProps {
   open: boolean
@@ -91,7 +92,7 @@ export function UserAuthDialog({
               setError(null)
             }}
             className={clsx(
-              'flex-1 rounded-lg px-3 py-2 text-sm font-medium',
+              `flex-1 rounded-lg py-2 text-sm font-medium ${textButtonPx}`,
               tab === 'login'
                 ? 'bg-deepl-accent text-white'
                 : 'border border-deepl-border bg-white hover:bg-deepl-light'
@@ -106,7 +107,7 @@ export function UserAuthDialog({
               setError(null)
             }}
             className={clsx(
-              'flex-1 rounded-lg px-3 py-2 text-sm font-medium',
+              `flex-1 rounded-lg py-2 text-sm font-medium ${textButtonPx}`,
               tab === 'register'
                 ? 'bg-deepl-accent text-white'
                 : 'border border-deepl-border bg-white hover:bg-deepl-light'
@@ -173,7 +174,7 @@ export function UserAuthDialog({
           <button
             type="submit"
             disabled={loading || !username.trim() || !password}
-            className="rounded-lg bg-deepl-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-deepl-accent/90 disabled:opacity-50"
+            className={clsx('rounded-lg bg-deepl-accent py-2.5 text-sm font-medium text-white hover:bg-deepl-accent/90 disabled:opacity-50', textButtonPx)}
           >
             {tab === 'login' ? t('userAuthSubmitLogin') : t('userAuthSubmitRegister')}
           </button>
@@ -181,7 +182,7 @@ export function UserAuthDialog({
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-lg bg-deepl-light px-4 py-2.5 text-sm hover:bg-deepl-border/50"
+            className={clsx('rounded-lg bg-deepl-light py-2.5 text-sm hover:bg-deepl-border/50', textButtonPx)}
           >
             {t('resetBack')}
           </button>
