@@ -125,16 +125,6 @@ export async function fetchRephrase(params: {
   return data.alternatives ?? []
 }
 
-export async function fetchDictionary(
-  lang: string,
-  word: string
-): Promise<DictionaryEntry | null> {
-  const res = await fetch(`/api/dictionary/${lang}/${encodeURIComponent(word)}`, fetchOptions)
-  if (res.status === 404) return null
-  if (!res.ok) throw new Error('Dictionary lookup failed')
-  return res.json()
-}
-
 export async function fetchDictionaryContext(params: {
   word: string
   sentence: string

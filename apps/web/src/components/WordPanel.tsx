@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import { diffHighlight } from '@parawrite/core/client'
@@ -24,7 +25,7 @@ interface WordPanelProps {
   onClose: () => void
 }
 
-function HighlightedAlternative({
+const HighlightedAlternative = memo(function HighlightedAlternative({
   original,
   alternative,
   lang,
@@ -33,7 +34,10 @@ function HighlightedAlternative({
   alternative: string
   lang: string
 }) {
-  const parts = diffHighlight(original, alternative, lang)
+  const parts = useMemo(
+    () => diffHighlight(original, alternative, lang),
+    [original, alternative, lang]
+  )
   return (
     <>
       {parts.map((part, index) =>
@@ -50,7 +54,7 @@ function HighlightedAlternative({
       )}
     </>
   )
-}
+})
 
 export function WordPanel({
   mode,
@@ -77,8 +81,8 @@ export function WordPanel({
     !isPhraseSelection && !!dictionary && dictionary.meanings.length > 0
   const originalSentence = rephraseOriginalSentence ?? ''
 
-  const content = (
-    <div className="flex flex-col gap-4">
+  const panelBody = (
+    <>
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-deepl-blue">
           {selectedWord ? `"${selectedWord}"` : t('wordPanelTitle')}
@@ -186,7 +190,7 @@ export function WordPanel({
           </section>
         </>
       )}
-    </div>
+    </>
   )
 
   if (mode === 'sheet') {
@@ -197,10 +201,10 @@ export function WordPanel({
         role="presentation"
       >
         <div
-          className="max-h-[70vh] w-full overflow-y-auto rounded-t-2xl bg-white p-4 shadow-xl"
+          className="flex max-h-[70vh] w-full flex-col gap-4 overflow-y-auto rounded-t-2xl bg-white p-4 shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
-          {content}
+          {panelBody}
         </div>
       </div>
     )
@@ -214,18 +218,18 @@ export function WordPanel({
         role="presentation"
       >
         <div
-          className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-4 shadow-xl"
+          className="flex max-h-[80vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-xl bg-white p-4 shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
-          {content}
+          {panelBody}
         </div>
       </div>
     )
   }
 
   return (
-    <aside className="flex w-full min-w-0 flex-col self-start overflow-hidden rounded-2xl border border-deepl-border bg-white p-4 shadow-sm">
-      {content}
+    <aside className="flex w-full min-w-0 flex-col gap-4 self-start overflow-hidden rounded-2xl border border-deepl-border bg-white p-4 shadow-sm">
+      {panelBody}
     </aside>
   )
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
 import clsx from 'clsx'
 import {
   detectSelectionGranularity,
@@ -56,6 +57,29 @@ export function Translator() {
     rephraseOptions,
     rephraseOriginalSentence,
     isPanelLoading,
+  } = useTranslationStore(
+    useShallow((s) => ({
+      meta: s.meta,
+      sourceLang: s.sourceLang,
+      targetLang: s.targetLang,
+      provider: s.provider,
+      model: s.model,
+      sourceText: s.sourceText,
+      targetText: s.targetText,
+      isTranslating: s.isTranslating,
+      isStreaming: s.isStreaming,
+      error: s.error,
+      selectedWord: s.selectedWord,
+      selectedRange: s.selectedRange,
+      selectionGranularity: s.selectionGranularity,
+      synonyms: s.synonyms,
+      dictionary: s.dictionary,
+      rephraseOptions: s.rephraseOptions,
+      rephraseOriginalSentence: s.rephraseOriginalSentence,
+      isPanelLoading: s.isPanelLoading,
+    }))
+  )
+  const {
     setSourceText,
     setTargetText,
     setDetectedSourceLang,
@@ -70,11 +94,29 @@ export function Translator() {
     setPanelLoading,
     clear,
     bumpHistoryRefresh,
-  } = useTranslationStore()
+  } = useTranslationStore(
+    useShallow((s) => ({
+      setSourceText: s.setSourceText,
+      setTargetText: s.setTargetText,
+      setDetectedSourceLang: s.setDetectedSourceLang,
+      appendTargetText: s.appendTargetText,
+      setTranslating: s.setTranslating,
+      setStreaming: s.setStreaming,
+      setError: s.setError,
+      setSelection: s.setSelection,
+      setSynonyms: s.setSynonyms,
+      setDictionary: s.setDictionary,
+      setRephraseOptions: s.setRephraseOptions,
+      setPanelLoading: s.setPanelLoading,
+      clear: s.clear,
+      bumpHistoryRefresh: s.bumpHistoryRefresh,
+    }))
+  )
 
   const [copied, setCopied] = useState(false)
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('twoColumn')
   const abortRef = useRef<AbortController | null>(null)
+  const panelAbortRef = useRef<AbortController | null>(null)
   const autoTranslateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleTranslateRef = useRef<() => Promise<void>>(async () => {})
   const prevSourceForAutoRef = useRef<string | null>(null)
@@ -276,10 +318,15 @@ export function Translator() {
     }
   }, [sourceText, meta?.autoTranslateDelaySeconds, provider, model])
 
+  const targetSegments = useMemo(
+    () => segmentText(targetText, targetLang),
+    [targetText, targetLang]
+  )
+
   const selectedWordCount = useMemo(() => {
     if (!selectedRange || !targetText) return 0
-    return countWordsInRange(segmentText(targetText, targetLang), selectedRange)
-  }, [selectedRange, targetText, targetLang])
+    return countWordsInRange(targetSegments, selectedRange)
+  }, [selectedRange, targetText, targetSegments])
 
   const phraseWordThreshold = useMemo(() => {
     const thresholds = meta?.phraseWordThresholds
@@ -294,6 +341,11 @@ export function Translator() {
     range: { start: number; end: number },
     forcedGranularity?: SelectionGranularity
   ) => {
+    panelAbortRef.current?.abort()
+    const controller = new AbortController()
+    panelAbortRef.current = controller
+    const { signal } = controller
+
     const granularity = forcedGranularity ?? detectSelectionGranularity(word, targetText)
     setSelection(word, range, granularity)
     setPanelLoading(true)
@@ -309,65 +361,68 @@ export function Translator() {
       granularity
     )
     const uiLang = i18n.language.startsWith('zh') ? 'zh' : 'en'
-    const wordCount = countWordsInRange(segmentText(targetText, targetLang), range)
+    const wordCount = countWordsInRange(targetSegments, range)
     const threshold =
       meta?.phraseWordThresholds?.byLanguage[targetLang] ??
       meta?.phraseWordThresholds?.default ??
       1
     const isPhrase = wordCount > threshold
 
+    const sharedParams = {
+      sourceText,
+      sourceLang,
+      targetLang,
+      provider,
+      model,
+    }
+
+    const isStale = () => signal.aborted
+
     try {
-      const [syns, dict, rephrase] = await Promise.all([
-        isPhrase
-          ? Promise.resolve([])
-          : fetchSynonyms({
-              word,
-              sentence,
-              sourceText,
-              sourceLang,
-              targetLang,
-              provider,
-              model,
+      const rephrasePromise = fetchRephrase({
+        sentence: rephraseTarget,
+        fullTranslation: targetText,
+        ...sharedParams,
+      }).then((rephrase) => {
+        if (isStale()) return
+        const rephraseTexts =
+          granularity === 'sentence'
+            ? splitAlternatives(
+                rephrase.map((r) => r.text),
+                resolveAlternativesSeparator()
+              )
+            : rephrase.map((r) => r.text.trim()).filter(Boolean)
+        setRephraseOptions(
+          [...new Set(rephraseTexts)].map((text) => ({ text })),
+          rephraseTarget
+        )
+      })
+
+      const extrasPromise = isPhrase
+        ? Promise.resolve()
+        : Promise.all([
+            fetchSynonyms({ word, sentence, ...sharedParams }).then((syns) => {
+              if (!isStale()) setSynonyms(syns)
             }),
-        isPhrase
-          ? Promise.resolve(null)
-          : fetchDictionaryContext({
+            fetchDictionaryContext({
               word,
               sentence,
-              sourceText,
-              sourceLang,
-              targetLang,
               uiLang,
-              provider,
-              model,
+              ...sharedParams,
+            }).then((dict) => {
+              if (!isStale()) setDictionary(dict)
             }),
-        fetchRephrase({
-          sentence: rephraseTarget,
-          sourceText,
-          fullTranslation: targetText,
-          sourceLang,
-          targetLang,
-          provider,
-          model,
-        }),
-      ])
-      setSynonyms(syns)
-      setDictionary(dict)
-      const rephraseTexts =
-        granularity === 'sentence'
-          ? splitAlternatives(
-              rephrase.map((r) => r.text),
-              resolveAlternativesSeparator()
-            )
-          : rephrase.map((r) => r.text.trim()).filter(Boolean)
-      setRephraseOptions(
-        [...new Set(rephraseTexts)].map((text) => ({ text })),
-        rephraseTarget
-      )
+          ])
+
+      await Promise.all([rephrasePromise, extrasPromise])
     } catch (err) {
-      setError((err as Error).message)
+      if (!isStale()) {
+        setError((err as Error).message)
+      }
     } finally {
-      setPanelLoading(false)
+      if (!isStale()) {
+        setPanelLoading(false)
+      }
     }
   }
 
@@ -388,10 +443,9 @@ export function Translator() {
 
   const applySynonym = (replacement: string) => {
     if (!selectedRange) return
-    const segments = segmentText(targetText, targetLang)
     const newText = replaceTokenRange(
       targetText,
-      segments,
+      targetSegments,
       selectedRange.start,
       selectedRange.end,
       replacement
@@ -447,8 +501,7 @@ export function Translator() {
   const panelVisible = isThreeColumn || !!selectedWord || isPanelLoading
 
   const paneClass = 'relative flex h-full min-h-0 w-full min-w-0 flex-col p-4'
-  const paneFooterClass =
-    'mt-auto flex w-full items-center justify-between gap-3 border-t border-transparent pt-3'
+  const paneFooterClass = 'mt-auto flex w-full items-center justify-between gap-3 pt-3'
 
   const sourcePane = (
     <section

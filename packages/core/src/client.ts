@@ -2,7 +2,7 @@ export * from './types.js'
 export * from './segmenter.js'
 export { detectTextLanguage } from './lang-detect.js'
 export { BUILD_VERSION } from './version.generated.js'
-export { splitAlternatives, splitAlternativesByPeriod } from './segmenter.js'
+export { splitAlternatives } from './segmenter.js'
 export { diffHighlight } from './diff.js'
 export type {
   AlternativesSeparator,

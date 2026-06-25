@@ -26,3 +26,15 @@ export function getEngineForProvider(
   const provider = getProviderConfig(config, providerId)
   return createEngine(provider)
 }
+
+export function createEngineCache(config: AppConfig): (providerId: string) => IEngine {
+  const cache = new Map<string, IEngine>()
+  return (providerId: string) => {
+    let engine = cache.get(providerId)
+    if (!engine) {
+      engine = getEngineForProvider(config, providerId)
+      cache.set(providerId, engine)
+    }
+    return engine
+  }
+}

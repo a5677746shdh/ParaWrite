@@ -24,7 +24,7 @@ export function UserAuthDialog({
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [nickname, setNickname] = useState('')
-  const [rememberMe, setRememberMe] = useState(true)
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -36,7 +36,7 @@ export function UserAuthDialog({
     setUsername('')
     setPassword('')
     setNickname('')
-    setRememberMe(true)
+    setRememberMe(false)
     setError(null)
   }
 
@@ -59,7 +59,6 @@ export function UserAuthDialog({
           username: username.trim(),
           password,
           nickname: nickname.trim() || undefined,
-          rememberMe,
         })
       }
       resetForm()

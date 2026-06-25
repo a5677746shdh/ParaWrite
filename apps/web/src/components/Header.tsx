@@ -26,25 +26,20 @@ function HeaderIconButton({
   children: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-1 text-sm">
-      <span className="invisible h-5 font-medium leading-5" aria-hidden="true">
-        —
-      </span>
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={disabled}
-        title={title}
-        aria-label={title}
-        className={
-          disabled
-            ? 'flex h-10 w-10 shrink-0 cursor-not-allowed items-center justify-center rounded-lg border border-deepl-border text-deepl-blue/30'
-            : 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-deepl-border text-deepl-blue hover:bg-deepl-light'
-        }
-      >
-        {children}
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={title}
+      className={
+        disabled
+          ? 'flex h-10 w-10 shrink-0 cursor-not-allowed items-center justify-center rounded-lg border border-deepl-border text-deepl-blue/30'
+          : 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-deepl-border text-deepl-blue hover:bg-deepl-light'
+      }
+    >
+      {children}
+    </button>
   )
 }
 

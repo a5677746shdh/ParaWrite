@@ -12,7 +12,7 @@ import {
   DictionaryService,
   getAppRoot,
   getDefaultModel,
-  getEngineForProvider,
+  createEngineCache,
   getHistoryConfig,
   getUserLoginMode,
   getUserSessionTtlHours,
@@ -74,6 +74,7 @@ function getUserLoginMeta(
 }
 
 export function createApp(config: AppConfig, configPath?: string): Hono {
+  const getEngine = createEngineCache(config)
   const dictionary = new DictionaryService(config)
   const appRoot = getAppRoot(configPath)
   const glossary = GlossaryService.fromConfig(appRoot, config.glossary?.file)
@@ -382,7 +383,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
 
     const provider = body.provider ?? config.app.default_provider
     const model = body.model ?? getDefaultModel(config, provider)
-    const engine = getEngineForProvider(config, provider)
+    const engine = getEngine(provider)
 
     const relevantGlossary = glossary.findRelevant(body.text, body.sourceLang)
     const glossarySection = glossary.buildPromptSection(
@@ -429,7 +430,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
 
     const provider = body.provider ?? config.app.default_provider
     const model = body.model ?? getDefaultModel(config, provider)
-    const engine = getEngineForProvider(config, provider)
+    const engine = getEngine(provider)
     const prompt = buildSynonymsPrompt(
       body.word,
       body.sentence,
@@ -467,7 +468,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
 
     const provider = body.provider ?? config.app.default_provider
     const model = body.model ?? getDefaultModel(config, provider)
-    const engine = getEngineForProvider(config, provider)
+    const engine = getEngine(provider)
     const prompt = buildRephrasePrompt(
       body.sentence,
       body.sourceText,
@@ -488,22 +489,6 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
       return c.json({ alternatives: parsed.alternatives ?? [] })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Rephrase request failed'
-      return c.json({ error: message }, 500)
-    }
-  })
-
-  app.get('/api/dictionary/:lang/:word', async (c) => {
-    const lang = c.req.param('lang')
-    const word = c.req.param('word')
-
-    try {
-      const entry = await dictionary.lookup(lang, decodeURIComponent(word))
-      if (!entry) {
-        return c.json({ error: 'Not found' }, 404)
-      }
-      return c.json(entry)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Dictionary lookup failed'
       return c.json({ error: message }, 500)
     }
   })

@@ -260,26 +260,24 @@ export function HistoryPanel() {
                 >
                   {t('historyPagePrev')}
                 </button>
-                <div className="inline-flex h-10 items-center justify-center rounded-lg border border-deepl-border px-4 text-sm">
-                  <span className="inline-flex items-center leading-none">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={pageInput}
-                      onChange={(e) => setPageInput(e.target.value.replace(/\D/g, ''))}
-                      onBlur={handlePageJump}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          ;(e.currentTarget as HTMLInputElement).blur()
-                        }
-                      }}
-                      aria-label={t('historyPageJumpLabel')}
-                      className="border-0 bg-transparent p-0 text-center text-deepl-blue outline-none"
-                      style={{ width: `${Math.max(1, pageInput.length || 1)}ch` }}
-                    />
-                    <span className="whitespace-nowrap text-deepl-muted"> / {totalPages}</span>
-                  </span>
+                <div className="inline-flex h-10 items-center justify-center gap-0 rounded-lg border border-deepl-border px-4 text-sm leading-none">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={pageInput}
+                    onChange={(e) => setPageInput(e.target.value.replace(/\D/g, ''))}
+                    onBlur={handlePageJump}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        ;(e.currentTarget as HTMLInputElement).blur()
+                      }
+                    }}
+                    aria-label={t('historyPageJumpLabel')}
+                    className="border-0 bg-transparent p-0 text-center text-deepl-blue outline-none"
+                    style={{ width: `${Math.max(1, pageInput.length || 1)}ch` }}
+                  />
+                  <span className="whitespace-nowrap text-deepl-muted"> / {totalPages}</span>
                 </div>
                 <button
                   type="button"

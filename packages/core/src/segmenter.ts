@@ -1,14 +1,35 @@
 import type { TokenSegment } from './types.js'
 
+type IntlSegmenter = {
+  segment: (text: string) => Iterable<{ segment: string; isWordLike?: boolean }>
+}
+
+const segmenterCache = new Map<string, IntlSegmenter>()
+
+function getSegmenter(locale: string): IntlSegmenter | null {
+  const cached = segmenterCache.get(locale)
+  if (cached) return cached
+
+  const Segmenter = (
+    Intl as unknown as {
+      Segmenter?: new (locale: string, opts: { granularity: string }) => IntlSegmenter
+    }
+  ).Segmenter
+  if (!Segmenter) return null
+
+  const segmenter = new Segmenter(locale, { granularity: 'word' })
+  segmenterCache.set(locale, segmenter)
+  return segmenter
+}
+
 export function segmentText(text: string, lang: string): TokenSegment[] {
   if (!text) return []
 
   const locale = lang === 'zh' ? 'zh-Hans' : lang === 'auto' ? 'en' : lang
 
   try {
-    const Segmenter = (Intl as unknown as { Segmenter?: new (locale: string, opts: { granularity: string }) => { segment: (text: string) => Iterable<{ segment: string; isWordLike?: boolean }> } }).Segmenter
-    if (Segmenter) {
-      const segmenter = new Segmenter(locale, { granularity: 'word' })
+    const segmenter = getSegmenter(locale)
+    if (segmenter) {
       const segments: TokenSegment[] = []
       let index = 0
       for (const part of segmenter.segment(text)) {
@@ -295,10 +316,6 @@ export function splitAlternatives(
     result.push(...parts)
   }
   return [...new Set(result)]
-}
-
-export function splitAlternativesByPeriod(texts: string[]): string[] {
-  return splitAlternatives(texts, 'period')
 }
 
 export function resolveLayoutMode(

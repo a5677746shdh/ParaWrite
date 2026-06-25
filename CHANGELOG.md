@@ -2,6 +2,17 @@
 
 All notable changes to ParaWrite are documented in this file.
 
+## [0.5.2] — 2026-06-25
+
+### Changed
+- Non-blocking startup model API checks; engine and segmenter instance caching
+- Frontend performance: Zustand shallow selectors, incremental word-panel loading, diff memoization
+- Login "remember me" checkbox unchecked by default; session cookie unless opted in
+- Simplified DOM structure in header, word panel, settings dialog, and history pagination
+
+### Removed
+- Legacy `GET /api/dictionary/:lang/:word` endpoint and unused `fetchDictionary` client
+
 ## [0.5.1] — 2026-06-25
 
 ### Added

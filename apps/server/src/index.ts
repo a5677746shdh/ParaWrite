@@ -22,9 +22,6 @@ try {
 
 const app = createApp(config, configPath)
 
-const modelAvailability = await checkConfiguredModelAvailability(config)
-logModelAvailabilityResults(modelAvailability)
-
 serve(
   {
     fetch: app.fetch,
@@ -38,3 +35,5 @@ serve(
     )
   }
 )
+
+void checkConfiguredModelAvailability(config).then(logModelAvailabilityResults)
