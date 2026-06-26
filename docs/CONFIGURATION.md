@@ -40,7 +40,23 @@ app:
   layout:
     three_column_min_width: 1280
     two_column_min_width: 768
+    pane_width_ratios:
+      default: 0.5
+      by_pair:
+        zho-eng: 0.4
 ```
+
+### Pane width ratios
+
+In two-column and three-column layouts, adjust source/target pane widths by language pair. Keys use **ISO 639-2** (`zho-eng`). The value is the **source** pane share when the first language is source and the second is target (0–1, exclusive).
+
+| Current pair | Config | Result |
+|--------------|--------|--------|
+| zh → en | `zho-eng: 0.4` | Source 40%, target 60% |
+| en → zh | (no `eng-zho`) | Mirrors: source 60%, target 40% |
+| en → zh | `eng-zho: 0.6` | Source 60% (forward key wins) |
+
+Ratios apply when the user selects languages or when auto-detect resolves the source language. Stacked (mobile) layout stays single-column.
 
 ## Providers
 

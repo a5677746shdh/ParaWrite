@@ -34,6 +34,10 @@ app:
   layout:                           # 响应式布局断点（像素）
     three_column_min_width: 1280    # ≥ 此宽度：翻译区 + 词语面板三列
     two_column_min_width: 768       # ≥ 此宽度：源/译文双列
+    pane_width_ratios:              # 双栏/三栏下原文与译文栏宽度比例
+      default: 0.5                  # 无匹配语言对时 50:50
+      by_pair:                      # 键为 ISO 639-2，如 zho-eng；值为前者作原文时的原文栏占比
+        zho-eng: 0.4                # 中→英：中文栏 40%；英→中：英文栏 60%（镜像，除非配置 eng-zho）
   selection_copy_enabled: false     # true：多选词时复制按钮复制选中片段
   word_lookup_mode: adaptive        # immediate | manual | adaptive（区分：窄屏手动、三列立即）
 

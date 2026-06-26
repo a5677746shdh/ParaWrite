@@ -175,7 +175,7 @@ Rules:
 3. Replace any fixed fill/stroke with `currentColor`.
 4. Use the same button shell class as sibling icons in that toolbar (footer icons share `paneIconButtonClass`).
 5. If the icon should look muted in one state, add a text utility on the **button** (e.g. `paneClearIconClass` = `text-deepl-blue/40`), not a different fill in the SVG.
-6. Do not add duplicate `.svg` files under `src/assets/` or wrapper components unless you explicitly ask for that.
+6. Do not add duplicate `.svg` files under `public/` or wrapper components unless you explicitly ask for that.
 
 ### State-specific icons
 

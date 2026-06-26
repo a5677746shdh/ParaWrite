@@ -8,17 +8,6 @@ export function canUseClipboardApi(): boolean {
   )
 }
 
-/** Whether Clipboard API read is likely available (HTTPS / localhost). */
-export function canReadClipboard(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    window.isSecureContext &&
-    typeof navigator !== 'undefined' &&
-    !!navigator.clipboard &&
-    typeof navigator.clipboard.readText === 'function'
-  )
-}
-
 function createPasteTarget(): HTMLTextAreaElement {
   const textarea = document.createElement('textarea')
   textarea.setAttribute('autocomplete', 'off')
@@ -30,7 +19,7 @@ function createPasteTarget(): HTMLTextAreaElement {
 }
 
 /** Legacy paste fallback for HTTP or browsers without clipboard.readText. */
-export function pasteWithExecCommand(target?: HTMLTextAreaElement | null): string | null {
+function pasteWithExecCommand(target?: HTMLTextAreaElement | null): string | null {
   const el = target ?? createPasteTarget()
   const detached = !target
 
@@ -92,15 +81,4 @@ export function copyWithExecCommand(text: string): boolean {
   }
 
   return ok
-}
-
-export function copyToClipboard(text: string): Promise<boolean> {
-  if (!canUseClipboardApi()) {
-    return Promise.resolve(copyWithExecCommand(text))
-  }
-
-  return navigator.clipboard!.writeText(text).then(
-    () => true,
-    () => copyWithExecCommand(text)
-  )
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
+import { useShallow } from 'zustand/react/shallow'
 import type { TranslationHistoryEntry } from '@parawrite/core/client'
 import {
   addHistoryFavorite,
@@ -35,13 +36,57 @@ const tabButtonClass = (active: boolean) =>
     active ? 'bg-deepl-accent text-white' : 'text-deepl-blue hover:bg-deepl-light'
   )
 
+function HistoryAddFavoriteButton({
+  onAdded,
+  onMessage,
+}: {
+  onAdded: () => void
+  onMessage: (message: string | null) => void
+}) {
+  const { t } = useTranslation()
+  const { sourceText, targetText, sourceLang, targetLang } = useTranslationStore(
+    useShallow((s) => ({
+      sourceText: s.sourceText,
+      targetText: s.targetText,
+      sourceLang: s.sourceLang,
+      targetLang: s.targetLang,
+    }))
+  )
+
+  const handleAddFavorite = async () => {
+    if (!sourceText.trim() || !targetText.trim()) return
+    try {
+      await addHistoryFavorite({
+        sourceText,
+        targetText,
+        sourceLang,
+        targetLang,
+      })
+      onMessage(t('historyFavoriteAdded'))
+      setTimeout(() => onMessage(null), 2000)
+      onAdded()
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void handleAddFavorite()}
+      disabled={!sourceText.trim() || !targetText.trim()}
+      title={t('historyAddFavorite')}
+      aria-label={t('historyAddFavorite')}
+      className="flex h-10 w-10 items-center justify-center rounded-lg border border-deepl-border text-deepl-blue hover:bg-deepl-light disabled:opacity-50"
+    >
+      <FavoriteIcon filled={false} />
+    </button>
+  )
+}
+
 export function HistoryPanel() {
   const { t } = useTranslation()
   const meta = useTranslationStore((s) => s.meta)
-  const sourceText = useTranslationStore((s) => s.sourceText)
-  const targetText = useTranslationStore((s) => s.targetText)
-  const sourceLang = useTranslationStore((s) => s.sourceLang)
-  const targetLang = useTranslationStore((s) => s.targetLang)
   const refreshMeta = useTranslationStore((s) => s.refreshMeta)
   const historyRefreshKey = useTranslationStore((s) => s.historyRefreshKey)
 
@@ -100,25 +145,12 @@ export function HistoryPanel() {
     void refreshMeta().then(() => loadHistory())
   }
 
-  const handleAddFavorite = async () => {
-    if (!sourceText.trim() || !targetText.trim()) return
-    try {
-      await addHistoryFavorite({
-        sourceText,
-        targetText,
-        sourceLang,
-        targetLang,
-      })
-      setFavoriteMessage(t('historyFavoriteAdded'))
-      setTimeout(() => setFavoriteMessage(null), 2000)
-      setPage(1)
-      const result = await fetchHistory(filter, 1, pageSize)
-      setEntries(result.entries)
-      setTotalPages(result.totalPages)
-    } catch {
-      // ignore
-    }
-  }
+  const handleFavoriteAdded = useCallback(async () => {
+    setPage(1)
+    const result = await fetchHistory(filter, 1, pageSize)
+    setEntries(result.entries)
+    setTotalPages(result.totalPages)
+  }, [filter, pageSize])
 
   const handleToggleFavorite = async (id: number) => {
     try {
@@ -191,16 +223,10 @@ export function HistoryPanel() {
                     {t('historyAll')}
                   </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void handleAddFavorite()}
-                  disabled={!sourceText.trim() || !targetText.trim()}
-                  title={t('historyAddFavorite')}
-                  aria-label={t('historyAddFavorite')}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-deepl-border text-deepl-blue hover:bg-deepl-light disabled:opacity-50"
-                >
-                  <FavoriteIcon filled={false} />
-                </button>
+                <HistoryAddFavoriteButton
+                  onAdded={() => void handleFavoriteAdded()}
+                  onMessage={setFavoriteMessage}
+                />
               </div>
             </div>
           )}

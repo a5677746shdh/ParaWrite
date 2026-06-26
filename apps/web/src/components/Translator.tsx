@@ -9,6 +9,7 @@ import {
   extractSentenceByWord,
   replaceTokenRange,
   resolveLayoutMode,
+  resolvePaneWidthRatios,
   resolveRephraseTarget,
   segmentText,
   splitAlternatives,
@@ -40,6 +41,8 @@ const DEFAULT_BREAKPOINTS = {
   twoColumnMinWidth: 768,
 }
 
+const DEFAULT_PANE_WIDTH_RATIOS = { default: 0.5, byPair: {} as Record<string, number> }
+
 /** Wait for idle after multi-word selection before synonym/dictionary requests. */
 const WORD_FETCH_DEBOUNCE_MS = 400
 
@@ -49,6 +52,7 @@ export function Translator() {
     meta,
     sourceLang,
     targetLang,
+    detectedSourceLang,
     provider,
     model,
     sourceText,
@@ -69,6 +73,7 @@ export function Translator() {
       meta: s.meta,
       sourceLang: s.sourceLang,
       targetLang: s.targetLang,
+      detectedSourceLang: s.detectedSourceLang,
       provider: s.provider,
       model: s.model,
       sourceText: s.sourceText,
@@ -130,6 +135,7 @@ export function Translator() {
   const autoTranslateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleTranslateRef = useRef<() => Promise<void>>(async () => {})
   const prevSourceForAutoRef = useRef<string | null>(null)
+  const prevTargetLangRef = useRef<string | null>(null)
   const streamBufferRef = useRef('')
   const streamRafRef = useRef<number | null>(null)
 
@@ -282,6 +288,20 @@ export function Translator() {
   ])
 
   handleTranslateRef.current = handleTranslate
+
+  useEffect(() => {
+    if (prevTargetLangRef.current === null) {
+      prevTargetLangRef.current = targetLang
+      return
+    }
+    if (prevTargetLangRef.current === targetLang) return
+    prevTargetLangRef.current = targetLang
+
+    const { targetText: currentTarget, sourceText: currentSource, provider: p, model: m } =
+      useTranslationStore.getState()
+    if (!currentTarget.trim() || !currentSource.trim() || !p || !m) return
+    void handleTranslateRef.current()
+  }, [targetLang])
 
   const translateOnEnter = meta?.translateOnEnter ?? false
 
@@ -582,20 +602,32 @@ export function Translator() {
       replacement
     )
     setTargetText(newText)
-    setSelection(replacement, selectedRange)
+    setSynonyms([])
+    setSelection(null, null)
   }
 
   const applyRephrase = (text: string) => {
     if (!selectedWord) return
-    const granularity = selectionGranularity ?? 'word'
-    const replaceTarget = resolveRephraseTarget(
-      selectedWord,
-      targetText,
-      targetLang,
-      granularity
-    )
-    const newText = targetText.replace(replaceTarget, text)
-    setTargetText(newText === targetText ? text : newText)
+    if (selectedRange) {
+      const newText = replaceTokenRange(
+        targetText,
+        targetSegments,
+        selectedRange.start,
+        selectedRange.end,
+        text
+      )
+      setTargetText(newText)
+    } else {
+      const granularity = selectionGranularity ?? 'word'
+      const replaceTarget = resolveRephraseTarget(
+        selectedWord,
+        targetText,
+        targetLang,
+        granularity
+      )
+      const newText = targetText.replace(replaceTarget, text)
+      if (newText !== targetText) setTargetText(newText)
+    }
     setRephraseOptions([])
     setSelection(null, null)
   }
@@ -637,6 +669,11 @@ export function Translator() {
 
   useEffect(() => {
     return () => {
+      abortRef.current?.abort()
+      panelAbortRef.current?.abort()
+      if (autoTranslateTimer.current) clearTimeout(autoTranslateTimer.current)
+      if (wordFetchTimerRef.current) clearTimeout(wordFetchTimerRef.current)
+      if (streamRafRef.current !== null) cancelAnimationFrame(streamRafRef.current)
       if ('speechSynthesis' in window) window.speechSynthesis.cancel()
     }
   }, [])
@@ -650,6 +687,21 @@ export function Translator() {
 
   const isThreeColumn = layoutMode === 'threeColumn'
   const isStacked = layoutMode === 'stacked'
+
+  const effectiveSourceLang = sourceLang === 'auto' ? detectedSourceLang : sourceLang
+  const paneWidthRatios = meta?.paneWidthRatios ?? DEFAULT_PANE_WIDTH_RATIOS
+  const { sourceRatio, targetRatio } = useMemo(
+    () => resolvePaneWidthRatios(paneWidthRatios, effectiveSourceLang, targetLang),
+    [paneWidthRatios, effectiveSourceLang, targetLang]
+  )
+  const translationGridStyle = useMemo(() => {
+    if (isStacked) return undefined
+    const sourcePct = Math.round(sourceRatio * 1000) / 10
+    const targetPct = Math.round(targetRatio * 1000) / 10
+    return {
+      gridTemplateColumns: `minmax(0, ${sourcePct}%) 1px minmax(0, ${targetPct}%)`,
+    }
+  }, [isStacked, sourceRatio, targetRatio])
 
   const panelMode = isThreeColumn ? 'resident' : isStacked ? 'sheet' : 'modal'
   const panelVisible =
@@ -882,10 +934,8 @@ export function Translator() {
   const translationCard = (
     <div className="w-full rounded-2xl border border-deepl-border bg-white shadow-sm">
       <div
-        className={clsx(
-          'grid w-full items-stretch',
-          isStacked ? 'grid-cols-1' : 'grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)]'
-        )}
+        className={clsx('grid w-full items-stretch', isStacked && 'grid-cols-1')}
+        style={translationGridStyle}
       >
         {sourcePane}
         {!isStacked && (

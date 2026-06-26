@@ -23,9 +23,13 @@ pnpm dev
 | `pnpm build` | Build core, web, and server |
 | `pnpm start` | Production server (rebuilds web first) |
 | `pnpm lint` | Typecheck all packages |
+| `pnpm test` | Run `@parawrite/core` unit tests |
+| `pnpm clean` | Remove build outputs and empty legacy source dirs |
 | `pnpm package:beta` | Build and collect `artifacts/parawrite-beta/` |
 
 `predev` and `prebuild` run `scripts/generate-version.mjs`, which writes `packages/core/src/version.generated.ts` (gitignored). Format: `{package.version}+{4-char suffix}`.
+
+`pnpm clean` removes all `dist/` outputs; run `pnpm build` (or `pnpm dev`) before `pnpm lint` if you cleaned a fresh checkout.
 
 ## Package scripts
 
@@ -39,7 +43,7 @@ These paths are listed in `.gitignore`. They are **not** part of the published r
 
 | Path | Purpose |
 |------|---------|
-| `refer/` | Project reference library (design sources, Affinity `.af` files, icon drafts). Shipped assets live under `apps/web/public/` and `apps/web/src/assets/`. |
+| `refer/` | Project reference library (design sources, Affinity `.af` files, icon drafts). Shipped assets live under `apps/web/public/`. |
 | `artifacts/` | Output of `pnpm package:beta` — safe to delete and regenerate |
 | `ai-memory/` | Optional local AI session notes |
 | `config/parawrite.yaml` | Local secrets and overrides |
@@ -65,6 +69,7 @@ These paths are listed in `.gitignore`. They are **not** part of the published r
 
 ```bash
 pnpm lint        # TypeScript checks
+pnpm test        # Core unit tests (layout, segmenter, etc.)
 pnpm build       # Full production build including PWA service worker
 ```
 

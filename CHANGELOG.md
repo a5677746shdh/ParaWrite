@@ -4,6 +4,28 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-06-25
+
+### Added
+- Configurable source/target pane width ratios per language pair (`app.layout.pane_width_ratios` in YAML)
+- Auto re-translate when target language changes if the target pane already has content
+- Root `pnpm test` and `pnpm clean` scripts
+
+### Changed
+- History panel no longer re-renders on every translation stream chunk (isolated favorite-button subscriptions)
+- Login failure tracker evicts stale entries after 24 hours
+- Register username hint appears only after invalid input, until dialog close
+
+### Fixed
+- Rephrase apply no longer replaces the entire translation when token replacement fails
+- Synonym apply clears word selection (consistent with rephrase)
+- Model API error logging no longer suppresses generic app API error logs when `model_api_errors` is disabled
+- Target-language change effect no longer retriggers on every streaming chunk
+
+### Removed
+- Unused clipboard exports (`canReadClipboard`, `copyToClipboard`); use `pasteFromClipboard` and `copyWithExecCommand`
+- Empty legacy directories (`packages/core/src/users`, `apps/server/src/db`, `apps/server/src/routes`)
+
 ## [0.7.0] — 2026-06-26
 
 ### Added
@@ -28,7 +50,7 @@ All notable changes to ParaWrite are documented in this file.
 
 ### Added
 - Source pane paste button when empty; clear (brush icon) when text is present
-- Clipboard read helpers for paste (`canReadClipboard`, `readFromClipboard`)
+- Clipboard read helper for paste (`pasteFromClipboard`, with `execCommand` fallback on HTTP)
 - Button icon conventions in `docs/UI-DESIGN.md` (inline SVG, `refer/` workflow)
 
 ### Changed

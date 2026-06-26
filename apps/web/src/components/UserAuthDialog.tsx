@@ -29,6 +29,7 @@ export function UserAuthDialog({
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showUsernameHint, setShowUsernameHint] = useState(false)
 
   const sessionTtlDays = Math.floor(sessionTtlHours / 24)
 
@@ -42,6 +43,7 @@ export function UserAuthDialog({
     setNickname('')
     setRememberMe(false)
     setError(null)
+    setShowUsernameHint(false)
   }
 
   const handleClose = () => {
@@ -60,6 +62,7 @@ export function UserAuthDialog({
         await loginUser({ username: username.trim(), password, rememberMe })
       } else {
         if (!isValidUsername(username)) {
+          setShowUsernameHint(true)
           setError(t('userAuthUsernameInvalid'))
           return
         }
@@ -97,6 +100,7 @@ export function UserAuthDialog({
             onClick={() => {
               setTab('login')
               setError(null)
+              setShowUsernameHint(false)
             }}
             className={clsx(
               `flex-1 rounded-lg py-2 text-sm font-medium ${textButtonPx}`,
@@ -130,15 +134,22 @@ export function UserAuthDialog({
             <input
               type="text"
               value={username}
-              onChange={(e) =>
-                setUsername(
-                  tab === 'register' ? sanitizeUsernameInput(e.target.value) : e.target.value
-                )
-              }
+              onChange={(e) => {
+                if (tab === 'register') {
+                  const raw = e.target.value
+                  const sanitized = sanitizeUsernameInput(raw)
+                  if (raw !== sanitized || (sanitized.length > 0 && !isValidUsername(sanitized))) {
+                    setShowUsernameHint(true)
+                  }
+                  setUsername(sanitized)
+                } else {
+                  setUsername(e.target.value)
+                }
+              }}
               autoComplete="username"
               className="rounded-lg border border-deepl-border px-3 py-2 outline-none focus:border-deepl-accent"
             />
-            {tab === 'register' && (
+            {tab === 'register' && showUsernameHint && (
               <span className="text-xs text-deepl-muted">{t('userAuthUsernameHint')}</span>
             )}
           </label>

@@ -20,6 +20,7 @@ import type {
 } from './types.js'
 import { BUILD_VERSION } from './version.generated.js'
 import { fromConfigLang, mapConfigLangRecord } from './lang-codes.js'
+import { getPaneWidthRatiosMeta } from './layout.js'
 
 const DEFAULT_THREE_COLUMN_MIN = 1280
 const DEFAULT_TWO_COLUMN_MIN = 768
@@ -348,6 +349,7 @@ export function toPublicMeta(
     runtimeEnv: runtimeEnv || undefined,
     autoTranslateDelaySeconds: config.app.auto_translate_delay_seconds ?? 0,
     layoutBreakpoints: getLayoutBreakpoints(config),
+    paneWidthRatios: getPaneWidthRatiosMeta(config),
     authRequired: isAccessAuthEnabled(config),
     restartAuthRequired: isRestartAuthEnabled(config),
     canRestartBackend: canRestartBackend(config, userLogin),

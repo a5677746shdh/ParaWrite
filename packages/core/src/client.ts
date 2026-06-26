@@ -5,6 +5,8 @@ export { BUILD_VERSION } from './version.generated.js'
 export { splitAlternatives } from './segmenter.js'
 export { diffHighlight } from './diff.js'
 export { isValidUsername, sanitizeUsernameInput } from './username.js'
+export { resolvePaneWidthRatios } from './layout.js'
+export type { PaneWidthRatioResult, PublicPaneWidthRatios } from './types.js'
 export type {
   AlternativesSeparator,
   HistoryPageResult,

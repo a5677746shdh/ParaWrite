@@ -21,6 +21,10 @@ app:
   layout:
     three_column_min_width: 1280
     two_column_min_width: 768
+    # pane_width_ratios:
+    #   default: 0.5
+    #   by_pair:
+    #     zho-eng: 0.4
   selection_copy_enabled: false
   word_lookup_mode: adaptive
 

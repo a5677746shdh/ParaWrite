@@ -60,14 +60,16 @@ export function createEventLogger(logging: ResolvedLoggingConfig) {
       writeSecurityEvent(logging, logging.backend_restart, c, 'backend restart requested')
     },
 
-    appApiError(method: string, path: string, message: string) {
-      if (!logging.app_api_errors) return
+    appApiError(method: string, path: string, message: string): boolean {
+      if (!logging.app_api_errors) return false
       console.error(`[parawrite] ${method} ${path}: ${message}`)
+      return true
     },
 
-    modelApiError(method: string, path: string, message: string) {
-      if (!logging.model_api_errors) return
+    modelApiError(method: string, path: string, message: string): boolean {
+      if (!logging.model_api_errors) return false
       console.error(`[parawrite] ${method} ${path}: ${message}`)
+      return true
     },
   }
 }

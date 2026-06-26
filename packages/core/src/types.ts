@@ -131,6 +131,24 @@ export interface ThemeColors {
 export interface LayoutConfig {
   three_column_min_width?: number
   two_column_min_width?: number
+  /** Source/target pane width ratios by language pair (ISO 639-2 keys in config). */
+  pane_width_ratios?: PaneWidthRatiosConfig
+}
+
+/** `langA-langB` ratio = langA pane share when langA is source and langB is target. */
+export interface PaneWidthRatiosConfig {
+  default?: number
+  by_pair?: Record<string, number>
+}
+
+export interface PublicPaneWidthRatios {
+  default: number
+  byPair: Record<string, number>
+}
+
+export interface PaneWidthRatioResult {
+  sourceRatio: number
+  targetRatio: number
 }
 
 /** `immediate` = lookup on select; `manual` = lookup button; `adaptive` = manual in 1–2 column, immediate in 3 column. */
@@ -210,6 +228,7 @@ export interface PublicMeta {
     threeColumnMinWidth: number
     twoColumnMinWidth: number
   }
+  paneWidthRatios: PublicPaneWidthRatios
   authRequired: boolean
   restartAuthRequired: boolean
   canRestartBackend: boolean

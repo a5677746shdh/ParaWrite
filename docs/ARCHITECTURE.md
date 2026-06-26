@@ -51,7 +51,7 @@ Two independent mechanisms (both optional):
 | Layer | Config | Purpose |
 |-------|--------|---------|
 | **Access gate** | `auth.access_totp_secret` | TOTP required before any API use; session cookie `parawrite_session` |
-| **User login** | `users.login.mode` | SQLite accounts, history, favorites; cookie `parawrite_user_session` |
+| **User login** | `users.login.mode` | SQLite accounts, history, favorites; cookie `parawrite_user` |
 
 User login modes: `disabled`, `restricted` (whitelist registration), `open`.
 

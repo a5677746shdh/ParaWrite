@@ -66,8 +66,9 @@ function logModelRouteError(
   events: EventLogger,
   message: string
 ): void {
-  events.modelApiError(c.req.method, c.req.path, message)
-  c.set('apiErrorLogged', true)
+  if (events.modelApiError(c.req.method, c.req.path, message)) {
+    c.set('apiErrorLogged', true)
+  }
 }
 
 function logAppRouteError(
@@ -75,8 +76,9 @@ function logAppRouteError(
   events: EventLogger,
   message: string
 ): void {
-  events.appApiError(c.req.method, c.req.path, message)
-  c.set('apiErrorLogged', true)
+  if (events.appApiError(c.req.method, c.req.path, message)) {
+    c.set('apiErrorLogged', true)
+  }
 }
 
 const PUBLIC_API_ROUTES = new Set([
