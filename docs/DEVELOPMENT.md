@@ -43,6 +43,8 @@ These paths are listed in `.gitignore`. They are **not** part of the published r
 | `artifacts/` | Output of `pnpm package:beta` — safe to delete and regenerate |
 | `ai-memory/` | Optional local AI session notes |
 | `config/parawrite.yaml` | Local secrets and overrides |
+| `config/manifest.json` | Private PWA manifest (copy from `config/manifest.example.json` or PWABuilder) |
+| `config/icons/` | Optional private PWA/header icon overrides for packaging |
 
 ## Project conventions
 

@@ -61,6 +61,17 @@ users:
     page_size: 5
   data_dir: /app/data               # 与 docker-compose volume 挂载路径一致
 
+logging:
+  include_client_ip: false
+  include_user_input: false
+  invalid_access_code: false
+  invalid_restart_code: false
+  restricted_registration: false
+  login_failures: false
+  backend_restart: false
+  app_api_errors: false
+  model_api_errors: false
+
 theme:
   primary: '#0f2b46'
   accent: '#2d7ff9'

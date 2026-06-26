@@ -3,6 +3,8 @@ parawrite.yaml
 parawrite.local.yaml
 custom-dictionary.yaml
 assetlinks.json
+manifest.json
+icons/
 
 # Only example templates are tracked
 !*.example.yaml

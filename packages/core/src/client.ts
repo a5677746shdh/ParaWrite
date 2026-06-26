@@ -4,6 +4,7 @@ export { detectTextLanguage } from './lang-detect.js'
 export { BUILD_VERSION } from './version.generated.js'
 export { splitAlternatives } from './segmenter.js'
 export { diffHighlight } from './diff.js'
+export { isValidUsername, sanitizeUsernameInput } from './username.js'
 export type {
   AlternativesSeparator,
   HistoryPageResult,

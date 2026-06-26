@@ -72,6 +72,12 @@ The web app registers a service worker with `display: standalone` and `display_o
 
 `theme_color` in the manifest is set to **`#ffffff`** (surface / header bar), not the primary brand blue, so Android TWA and PWABuilder status bars match the white app header. If you customize `theme.surface` in YAML, rebuild and repackage the Android app so the manifest reflects the new color (the in-app `meta theme-color` tag is updated at runtime).
 
+### PWA manifest and icons
+
+- Default icons live in `apps/web/public/icons/`.
+- Copy `config/manifest.example.json` to **`config/manifest.json`** (gitignored) and edit for your domain (`id`, etc.). Vite loads the private file when present.
+- Optional: place override PNGs in **`config/icons/`** (gitignored). `pnpm package:beta` copies them into `web-dist/icons/` after build.
+
 After deploying a new version, users may need to reload once for the service worker to update (`skipWaiting` is enabled).
 
 ## Android app (TWA / Digital Asset Links)

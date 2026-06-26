@@ -20,6 +20,8 @@ import {
   getHistoryConfig,
   getUserLoginMode,
   getUserSessionTtlHours,
+  getAccessSessionTtlHours,
+  getLoggingConfig,
   GlossaryService,
   isAccessAuthEnabled,
   isRestartAuthEnabled,
@@ -43,12 +45,44 @@ import { openDatabase } from './db.js'
 import { HistoryService } from './history-service.js'
 import { UserError, UserService } from './user-service.js'
 import { USER_SESSION_COOKIE_NAME, UserSessionManager } from './user-session.js'
+import {
+  createEventLogger,
+  shouldSkipAppApiErrorLog,
+  type EventLogger,
+} from './event-log.js'
+import { getClientIp } from './client-ip.js'
+import {
+  clearLoginFailures,
+  loginAttemptKey,
+  recordLoginFailure,
+} from './login-attempt-tracker.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+type AppEnv = { Variables: { apiErrorLogged?: boolean } }
+
+function logModelRouteError(
+  c: { req: { method: string; path: string }; set: (key: 'apiErrorLogged', value: boolean) => void },
+  events: EventLogger,
+  message: string
+): void {
+  events.modelApiError(c.req.method, c.req.path, message)
+  c.set('apiErrorLogged', true)
+}
+
+function logAppRouteError(
+  c: { req: { method: string; path: string }; set: (key: 'apiErrorLogged', value: boolean) => void },
+  events: EventLogger,
+  message: string
+): void {
+  events.appApiError(c.req.method, c.req.path, message)
+  c.set('apiErrorLogged', true)
+}
 
 const PUBLIC_API_ROUTES = new Set([
   '/api/meta',
   '/api/auth/verify',
+  '/api/auth/logout',
   '/api/user/register',
   '/api/user/login',
 ])
@@ -80,16 +114,17 @@ function getUserLoginMeta(
   }
 }
 
-export function createApp(config: AppConfig, configPath?: string): Hono {
+export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> {
   const getEngine = createEngineCache(config)
   const dictionary = new DictionaryService(config, getEngine)
   const appRoot = getAppRoot(configPath)
   const glossary = GlossaryService.fromConfig(appRoot, config.glossary?.file)
-  const authManager = new AuthManager(config.auth?.session_ttl_hours ?? 24)
+  const authManager = new AuthManager(getAccessSessionTtlHours(config))
   const accessAuthEnabled = isAccessAuthEnabled(config)
   const restartAuthEnabled = isRestartAuthEnabled(config)
   const userLoginEnabled = isUserLoginEnabled(config)
   const userLoginMode = getUserLoginMode(config)
+  const events = createEventLogger(getLoggingConfig(config))
 
   let userService: UserService | null = null
   let historyService: HistoryService | null = null
@@ -108,7 +143,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
     userSessionManager = new UserSessionManager(getUserSessionTtlHours(config))
   }
 
-  const app = new Hono()
+  const app = new Hono<AppEnv>()
 
   app.use(
     '*',
@@ -117,6 +152,29 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
       credentials: true,
     })
   )
+
+  app.use('/api/*', async (c, next) => {
+    await next()
+    if (c.res.status < 400 || c.get('apiErrorLogged')) return
+
+    const pathname = new URL(c.req.url).pathname
+    if (shouldSkipAppApiErrorLog(pathname, c.res.status)) return
+
+    try {
+      const cloned = c.res.clone()
+      const text = await cloned.text()
+      let message = `HTTP ${c.res.status}`
+      try {
+        const json = JSON.parse(text) as { error?: string }
+        if (json.error) message = json.error
+      } catch {
+        if (text.trim()) message = text.trim()
+      }
+      events.appApiError(c.req.method, pathname, message)
+    } catch {
+      events.appApiError(c.req.method, pathname, `HTTP ${c.res.status}`)
+    }
+  })
 
   app.use('*', async (c, next) => {
     if (!accessAuthEnabled) return next()
@@ -172,21 +230,40 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
       return c.json({ ok: true, authenticated: true })
     }
 
-    const body = await c.req.json<{ code?: string }>()
+    const body = await c.req.json<{ code?: string; rememberMe?: boolean }>()
     const secret = config.auth?.access_totp_secret?.trim()
     if (!secret || !body.code || !verifyTotp(secret, body.code)) {
+      events.invalidAccessCode(c)
       return c.json({ error: 'Invalid code' }, 401)
     }
 
     const token = authManager.createSession()
+    const sessionTtlHours = getAccessSessionTtlHours(config)
+    const rememberMe = body.rememberMe === true
     setCookie(c, SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: 'Strict',
       path: '/',
-      maxAge: (config.auth?.session_ttl_hours ?? 24) * 60 * 60,
+      ...(rememberMe ? { maxAge: sessionTtlHours * 60 * 60 } : {}),
     })
 
     return c.json({ ok: true, authenticated: true })
+  })
+
+  app.post('/api/auth/logout', (c) => {
+    if (!accessAuthEnabled) {
+      return c.json({ ok: true })
+    }
+
+    const token = getCookie(c, SESSION_COOKIE_NAME)
+    if (token) authManager.revokeSession(token)
+    setCookie(c, SESSION_COOKIE_NAME, '', {
+      httpOnly: true,
+      sameSite: 'Strict',
+      path: '/',
+      maxAge: 0,
+    })
+    return c.json({ ok: true })
   })
 
   if (userLoginEnabled && userService && userSessionManager && historyService) {
@@ -221,6 +298,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
         userLoginMode === 'restricted' &&
         !userService.isUsernameAllowed(body.username, allowedUsernames)
       ) {
+        events.restrictedRegistration(c, body.username)
         return c.json({ error: 'Registration not allowed for this username' }, 403)
       }
 
@@ -255,8 +333,16 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
 
       const profile = await userService.authenticate(body.username, body.password)
       if (!profile) {
+        const attemptKey = loginAttemptKey(getClientIp(c), body.username)
+        const failures = recordLoginFailure(attemptKey)
+        if (failures >= 3) {
+          events.loginFailures(c, body.username)
+          clearLoginFailures(attemptKey)
+        }
         return c.json({ error: 'Invalid username or password' }, 401)
       }
+
+      clearLoginFailures(loginAttemptKey(getClientIp(c), body.username))
 
       const token = userSessionManager.createSession(profile.id)
       setUserCookie(c, token, body.rememberMe !== false)
@@ -278,6 +364,18 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
         path: '/',
         maxAge: 0,
       })
+
+      if (accessAuthEnabled) {
+        const accessToken = getCookie(c, SESSION_COOKIE_NAME)
+        if (accessToken) authManager.revokeSession(accessToken)
+        setCookie(c, SESSION_COOKIE_NAME, '', {
+          httpOnly: true,
+          sameSite: 'Strict',
+          path: '/',
+          maxAge: 0,
+        })
+      }
+
       return c.json({ ok: true })
     })
 
@@ -435,6 +533,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
         await stream.writeSSE({ data: '[DONE]' })
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Translation failed'
+        logModelRouteError(c, events, message)
         await stream.writeSSE({ data: JSON.stringify({ error: message }) })
       }
     })
@@ -474,6 +573,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
       return c.json({ synonyms: parsed.synonyms ?? [] })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Synonyms request failed'
+      logModelRouteError(c, events, message)
       return c.json({ error: message }, 500)
     }
   })
@@ -512,6 +612,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
       return c.json({ alternatives: parsed.alternatives ?? [] })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Rephrase request failed'
+      logModelRouteError(c, events, message)
       return c.json({ error: message }, 500)
     }
   })
@@ -526,10 +627,12 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
       }
       const secret = config.auth?.restart_totp_secret?.trim()
       if (!secret || !body.totpCode || !verifyTotp(secret, body.totpCode)) {
+        events.invalidRestartCode(c)
         return c.json({ error: 'Invalid restart code' }, 403)
       }
     }
 
+    events.backendRestart(c)
     setTimeout(() => process.exit(0), 300)
     return c.json({ ok: true })
   })
@@ -560,8 +663,15 @@ export function createApp(config: AppConfig, configPath?: string): Hono {
       return c.json(entry)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Dictionary context failed'
+      logModelRouteError(c, events, message)
       return c.json({ error: message }, 500)
     }
+  })
+
+  app.onError((err, c) => {
+    const message = err instanceof Error ? err.message : 'Internal error'
+    logAppRouteError(c, events, message)
+    return c.json({ error: message }, 500)
   })
 
   const webDistPath = path.resolve(__dirname, '../../web/dist')

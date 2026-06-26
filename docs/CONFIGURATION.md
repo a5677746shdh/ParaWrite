@@ -133,6 +133,25 @@ users:
 | `restricted` | Only `allowed_usernames` may register; existing users can always log in |
 | `open` | Anyone may register; `allowed_usernames` controls restart-button visibility |
 
+## Server logging
+
+Optional terminal logging for security events and API errors. All switches default to **off**.
+
+```yaml
+logging:
+  include_client_ip: false       # Attach client IP to security event logs
+  include_user_input: false      # Attach user-supplied fields (e.g. username)
+  invalid_access_code: false     # Wrong page access TOTP
+  invalid_restart_code: false    # Wrong backend restart TOTP
+  restricted_registration: false # Registration denied in restricted mode
+  login_failures: false          # After 3 consecutive wrong passwords (per IP + username)
+  backend_restart: false         # Frontend restart button used
+  app_api_errors: false          # Non-model API errors
+  model_api_errors: false        # LLM errors (translate, synonyms, rephrase, dictionary)
+```
+
+Client IP is read from `X-Forwarded-For`, `X-Real-IP`, or `CF-Connecting-IP` when `include_client_ip` is true.
+
 ## Theme
 
 Override CSS variables at runtime:

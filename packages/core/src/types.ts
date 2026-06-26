@@ -54,6 +54,34 @@ export interface AuthConfig {
   session_ttl_hours?: number
 }
 
+/** Server-side terminal logging toggles (all default off). */
+export interface LoggingConfig {
+  /** Include client IP in security event logs. Default false. */
+  include_client_ip?: boolean
+  /** Include user-supplied fields (e.g. username) in security event logs. Default false. */
+  include_user_input?: boolean
+  invalid_access_code?: boolean
+  invalid_restart_code?: boolean
+  restricted_registration?: boolean
+  /** Log after 3 consecutive failed logins for the same IP + username. */
+  login_failures?: boolean
+  backend_restart?: boolean
+  app_api_errors?: boolean
+  model_api_errors?: boolean
+}
+
+export interface ResolvedLoggingConfig {
+  include_client_ip: boolean
+  include_user_input: boolean
+  invalid_access_code: boolean
+  invalid_restart_code: boolean
+  restricted_registration: boolean
+  login_failures: boolean
+  backend_restart: boolean
+  app_api_errors: boolean
+  model_api_errors: boolean
+}
+
 export type UserLoginMode = 'disabled' | 'restricted' | 'open'
 
 export interface UserLoginConfig {
@@ -132,6 +160,7 @@ export interface AppConfig {
   glossary?: GlossaryConfig
   pwa?: PwaConfig
   auth?: AuthConfig
+  logging?: LoggingConfig
   users?: UsersConfig
   theme?: ThemeConfig
 }
@@ -185,6 +214,8 @@ export interface PublicMeta {
   restartAuthRequired: boolean
   canRestartBackend: boolean
   authenticated: boolean
+  /** TOTP access session TTL from `auth.session_ttl_hours` (for remember-me checkbox). */
+  accessSessionTtlHours: number
   translateOnEnter: boolean
   alternativesSeparators: {
     default: AlternativesSeparator

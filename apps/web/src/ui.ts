@@ -1,6 +1,15 @@
 /** Horizontal padding for standard labeled text buttons (`px-6`, 1.5rem). */
 export const textButtonPx = 'px-6'
 
+/** Source/target pane editor body text. */
+export const paneEditorTextClass = 'text-lg leading-relaxed text-deepl-blue'
+
+/** Empty source/target pane hint (muted placeholder). */
+export const panePlaceholderClass = 'text-deepl-muted'
+
+/** Native textarea placeholder — pair with `paneEditorTextClass`. */
+export const panePlaceholderFieldClass = 'placeholder:text-deepl-muted'
+
 /** Translation pane footer icon buttons (copy, speak, clear). */
 export const paneIconButtonClass =
   'flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-deepl-border bg-white hover:bg-deepl-light disabled:opacity-50'

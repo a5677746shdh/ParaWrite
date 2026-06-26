@@ -1,6 +1,7 @@
 import { scrypt, randomBytes, timingSafeEqual } from 'node:crypto'
 import { promisify } from 'node:util'
 import type { UserProfile } from '@parawrite/core'
+import { isValidUsername } from '@parawrite/core'
 import type { AppDatabase } from './db.js'
 
 const scryptAsync = promisify(scrypt)
@@ -49,8 +50,8 @@ export class UserService {
     nickname?: string
   ): Promise<UserProfile> {
     const trimmedUsername = username.trim()
-    if (!trimmedUsername || trimmedUsername.length < 2) {
-      throw new UserError('Username must be at least 2 characters')
+    if (!isValidUsername(trimmedUsername)) {
+      throw new UserError('Username must be 2+ letters or numbers (A-Z, a-z, 0-9)')
     }
     if (!password || password.length < 4) {
       throw new UserError('Password must be at least 4 characters')

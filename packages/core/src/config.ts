@@ -9,9 +9,11 @@ import yaml from 'js-yaml'
 import type {
   AlternativesSeparator,
   AppConfig,
+  LoggingConfig,
   PublicMeta,
   PublicUserSummary,
   ProviderConfig,
+  ResolvedLoggingConfig,
   ThemeColors,
   UserLoginMode,
   WordLookupMode,
@@ -284,6 +286,25 @@ export function getUserSessionTtlHours(config: AppConfig): number {
   return config.users?.login?.session_ttl_hours ?? 168
 }
 
+export function getAccessSessionTtlHours(config: AppConfig): number {
+  return config.auth?.session_ttl_hours ?? 24
+}
+
+export function getLoggingConfig(config: AppConfig): ResolvedLoggingConfig {
+  const logging: LoggingConfig = config.logging ?? {}
+  return {
+    include_client_ip: logging.include_client_ip ?? false,
+    include_user_input: logging.include_user_input ?? false,
+    invalid_access_code: logging.invalid_access_code ?? false,
+    invalid_restart_code: logging.invalid_restart_code ?? false,
+    restricted_registration: logging.restricted_registration ?? false,
+    login_failures: logging.login_failures ?? false,
+    backend_restart: logging.backend_restart ?? false,
+    app_api_errors: logging.app_api_errors ?? false,
+    model_api_errors: logging.model_api_errors ?? false,
+  }
+}
+
 export function resolveDataDir(config: AppConfig, configPath?: string): string {
   if (process.env.PARWRITE_DATA_DIR) {
     return path.resolve(process.env.PARWRITE_DATA_DIR)
@@ -331,6 +352,7 @@ export function toPublicMeta(
     restartAuthRequired: isRestartAuthEnabled(config),
     canRestartBackend: canRestartBackend(config, userLogin),
     authenticated,
+    accessSessionTtlHours: getAccessSessionTtlHours(config),
     translateOnEnter: config.app.translate_on_enter ?? false,
     alternativesSeparators: getAlternativesSeparatorsMeta(config),
     phraseWordThresholds: getPhraseWordThresholdsMeta(config),

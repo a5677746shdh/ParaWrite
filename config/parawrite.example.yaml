@@ -117,6 +117,20 @@ users:
   data_dir: data                  # SQLite 数据目录（相对项目根目录）；可用 PARWRITE_DATA_DIR 覆盖
 
 # ---------------------------------------------------------------------------
+# 服务端终端日志 / Server terminal logging（默认全部关闭）
+# ---------------------------------------------------------------------------
+logging:
+  include_client_ip: false       # 安全类日志是否附带客户端 IP
+  include_user_input: false      # 安全类日志是否附带用户填入内容（如用户名）
+  invalid_access_code: false     # 错误的网页访问验证码
+  invalid_restart_code: false    # 错误的重启验证码
+  restricted_registration: false # restricted 模式下被拒绝的注册
+  login_failures: false          # 同一 IP+用户名连续 3 次密码错误
+  backend_restart: false         # 通过前端点击重启后端
+  app_api_errors: false          # 应用 API 错误（非模型）
+  model_api_errors: false        # 模型 API 错误（翻译/同义词/改写/词典）
+
+# ---------------------------------------------------------------------------
 # 界面主题色 / UI theme（#RRGGBB）
 # ---------------------------------------------------------------------------
 theme:

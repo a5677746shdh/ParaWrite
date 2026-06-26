@@ -4,6 +4,26 @@
 
 ## [未发布]
 
+## [0.7.0] — 2026-06-26
+
+### 新增
+- 访问验证码「X 天内不再验证」复选框（`auth.session_ttl_hours` 配置天数）
+- 启用访问验证时：选项内「忘记页面验证」；退出登录同时清除访问验证状态
+- 可配置服务端终端日志（`logging.*`）：安全事件与应用/模型 API 错误
+- 六种界面语言（英/中/俄/日/法/西）；文案模块 `apps/web/src/i18n/locales/`
+- PWA 图标迁至 `public/icons/`；可选私有 `config/manifest.json`（`load-pwa-manifest.mjs`）
+- 注册用户名仅允许英文字母与数字（至少 2 位）
+- HTTP 环境下粘贴回退（Clipboard API 不可用时）
+
+### 变更
+- `npm start` 前自动构建 core、server、web（避免 server dist 过期）
+- 原文/译文占位符样式统一（`panePlaceholderClass` 等）
+- 选项弹窗语言列表与完整 UI 语言一致
+
+### 修复
+- 开启 `logging.model_api_errors` 时模型 API 错误写入终端
+- 非 HTTPS 部署下粘贴按钮可用
+
 ## [0.6.2] — 2026-06-26
 
 ### 新增

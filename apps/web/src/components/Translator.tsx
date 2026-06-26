@@ -24,14 +24,15 @@ import {
   saveHistory,
   streamTranslate,
 } from '../api'
-import { copyWithExecCommand, canReadClipboard, canUseClipboardApi, readFromClipboard } from '../clipboard'
+import { copyWithExecCommand, canUseClipboardApi, pasteFromClipboard } from '../clipboard'
+import { resolveUiLang } from '../i18n/languages'
 import { useAutoResizeTextarea } from '../hooks/useAutoResizeTextarea'
 import { useTranslationStore } from '../store'
 import { TextStats } from './TextStats'
 import { TokenEditor } from './TokenEditor'
 import { WordPanel } from './WordPanel'
 import { HistoryPanel } from './HistoryPanel'
-import { textButtonPx, paneIconButtonClass, paneClearIconClass, speakActiveButtonClass, wordSelectionCancelButtonClass } from '../ui'
+import { textButtonPx, paneIconButtonClass, paneClearIconClass, paneEditorTextClass, panePlaceholderFieldClass, speakActiveButtonClass, wordSelectionCancelButtonClass } from '../ui'
 
 /** Responsive breakpoints from meta.layout or defaults; drives three-column / modal / sheet word panel. */
 const DEFAULT_BREAKPOINTS = {
@@ -396,7 +397,7 @@ export function Translator() {
       granularity
     )
     setRephraseOptions([], rephraseTarget)
-    const uiLang = i18n.language.startsWith('zh') ? 'zh' : 'en'
+    const uiLang = resolveUiLang(i18n.language)
     const wordCount = countWordsInRange(targetSegments, range)
     const threshold =
       meta?.phraseWordThresholds?.byLanguage[targetLang] ??
@@ -618,21 +619,6 @@ export function Translator() {
     if (copyWithExecCommand(textToCopy)) showCopied()
   }
 
-  const isSourceEmpty = !sourceText.trim()
-  const canPaste = canReadClipboard()
-
-  const handleSourcePaneAction = () => {
-    if (!isSourceEmpty) {
-      clear()
-      return
-    }
-    void readFromClipboard()
-      .then((text) => {
-        if (text) setSourceText(text)
-      })
-      .catch(() => {})
-  }
-
   const speak = () => {
     if (!('speechSynthesis' in window)) return
     if (isSpeaking) {
@@ -673,6 +659,22 @@ export function Translator() {
 
   const sourceTextareaRef = useAutoResizeTextarea(sourceText)
 
+  const isSourceEmpty = !sourceText.trim()
+
+  const handleSourcePaneAction = () => {
+    if (!isSourceEmpty) {
+      clear()
+      return
+    }
+    void pasteFromClipboard(sourceTextareaRef.current).then((text) => {
+      if (text) {
+        setSourceText(text)
+        return
+      }
+      sourceTextareaRef.current?.focus()
+    })
+  }
+
   const paneClass = clsx(
     'relative flex w-full min-w-0 flex-col p-4',
     !isStacked && 'h-full min-h-0'
@@ -694,7 +696,11 @@ export function Translator() {
           onChange={(e) => setSourceText(e.target.value)}
           onKeyDown={handleSourceKeyDown}
           placeholder={t('sourcePlaceholder')}
-          className="block min-h-[6rem] w-full resize-none overflow-hidden border-0 bg-transparent text-lg leading-relaxed text-deepl-blue outline-none"
+          className={clsx(
+            'block min-h-[6rem] w-full resize-none overflow-hidden border-0 bg-transparent outline-none',
+            paneEditorTextClass,
+            panePlaceholderFieldClass
+          )}
         />
       </div>
       <div className={paneFooterClass}>
@@ -703,7 +709,6 @@ export function Translator() {
           <button
             type="button"
             onClick={handleSourcePaneAction}
-            disabled={isSourceEmpty && !canPaste}
             title={isSourceEmpty ? t('paste') : t('clear')}
             aria-label={isSourceEmpty ? t('paste') : t('clear')}
             className={clsx(paneIconButtonClass, !isSourceEmpty && paneClearIconClass)}

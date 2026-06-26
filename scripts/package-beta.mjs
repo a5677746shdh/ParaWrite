@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execSync } from 'node:child_process'
+import { applyPrivatePwaToWebDist } from './load-pwa-manifest.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
@@ -79,6 +80,7 @@ if (fs.existsSync(outDir)) {
 fs.mkdirSync(outDir, { recursive: true })
 
 copyDir(path.join(root, 'apps/web/dist'), path.join(outDir, 'web-dist'))
+applyPrivatePwaToWebDist(path.join(outDir, 'web-dist'))
 copyDir(path.join(root, 'apps/server/dist'), path.join(outDir, 'server-dist'))
 copyDir(path.join(root, 'packages/core/dist'), path.join(outDir, 'core-dist'))
 
@@ -101,6 +103,10 @@ copyFile(
 copyFile(
   path.join(root, 'config/parawrite.docker.example.yaml'),
   path.join(outDir, 'config/parawrite.docker.example.yaml')
+)
+copyFile(
+  path.join(root, 'config/manifest.example.json'),
+  path.join(outDir, 'config/manifest.example.json')
 )
 copyFile(
   path.join(root, 'config/assetlinks.example.json'),

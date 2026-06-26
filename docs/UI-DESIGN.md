@@ -110,7 +110,9 @@ Button icons follow a single inline-SVG pattern. When you provide a reference fi
 | Kind | Location | Examples |
 |------|----------|----------|
 | **UI button icons** | Inline `<svg>` inside the component that renders the button | Paste, clear, copy, speak in `Translator.tsx`; swap, settings in `Header.tsx` |
-| **App / PWA raster** | `apps/web/src/assets/` or `apps/web/public/` | `app-icon.png`, favicon, manifest icons |
+| **App / PWA raster** | `apps/web/public/icons/` | favicon, PWA icons, header logo (`app-icon.png`) |
+| **PWA manifest (private)** | `config/manifest.json` (gitignored) | PWABuilder output; falls back to `config/manifest.example.json` |
+| **PWA icons (private override)** | `config/icons/` (gitignored) | Optional production icons copied into beta `web-dist/icons/` |
 | **Design references** | `refer/` (gitignored, local only) | Affinity sources, Iconfont exports, drafts — **never edit these files in place** |
 
 Shared button **shell** classes live in `apps/web/src/ui.ts` (e.g. `paneIconButtonClass`, `paneClearIconClass`, `speakActiveButtonClass`). Icon **color** comes from those classes via `currentColor`, not hard-coded fills in the SVG.

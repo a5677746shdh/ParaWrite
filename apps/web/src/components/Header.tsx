@@ -4,7 +4,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { useTranslationStore } from '../store'
 import { LanguageSelect } from './LanguageSelect'
 import { ResetDialog } from './ResetDialog'
-import appIcon from '../assets/app-icon.png'
 
 const PROVIDER_MODEL_SEP = '::'
 
@@ -169,7 +168,7 @@ export function Header() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex shrink-0 items-center gap-3">
             <img
-              src={appIcon}
+              src="/icons/app-icon.png"
               alt="ParaWrite"
               width={48}
               height={48}
@@ -252,11 +251,13 @@ export function Header() {
         canRestartBackend={meta?.canRestartBackend}
         userLoginEnabled={meta?.userLogin?.enabled}
         userAuthenticated={meta?.userLogin?.authenticated}
+        authRequired={meta?.authRequired}
         onClose={() => setOptionsOpen(false)}
         onUiLanguageChange={changeUiLang}
         onReloadFrontend={handleReloadFrontend}
         onRestartSuccess={handleRestartSuccess}
         onLogout={() => void refreshMeta()}
+        onForgetAccessAuth={() => void refreshMeta()}
       />
     </>
   )

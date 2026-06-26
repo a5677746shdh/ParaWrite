@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import { loginUser, registerUser } from '../api'
+import { isValidUsername, sanitizeUsernameInput } from '@parawrite/core/client'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { textButtonPx } from '../ui'
 
@@ -58,6 +59,10 @@ export function UserAuthDialog({
       if (tab === 'login') {
         await loginUser({ username: username.trim(), password, rememberMe })
       } else {
+        if (!isValidUsername(username)) {
+          setError(t('userAuthUsernameInvalid'))
+          return
+        }
         await registerUser({
           username: username.trim(),
           password,
@@ -125,10 +130,17 @@ export function UserAuthDialog({
             <input
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) =>
+                setUsername(
+                  tab === 'register' ? sanitizeUsernameInput(e.target.value) : e.target.value
+                )
+              }
               autoComplete="username"
               className="rounded-lg border border-deepl-border px-3 py-2 outline-none focus:border-deepl-accent"
             />
+            {tab === 'register' && (
+              <span className="text-xs text-deepl-muted">{t('userAuthUsernameHint')}</span>
+            )}
           </label>
 
           <label className="flex flex-col gap-1 text-sm">

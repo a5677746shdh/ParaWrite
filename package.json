@@ -1,6 +1,6 @@
 {
   "name": "parawrite",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
@@ -9,7 +9,7 @@
     "prebuild": "node scripts/generate-version.mjs",
     "build": "pnpm -r build",
     "package:beta": "node scripts/package-beta.mjs",
-    "prestart": "pnpm --filter @parawrite/web build",
+    "prestart": "pnpm --filter @parawrite/core build && pnpm --filter @parawrite/server build && pnpm --filter @parawrite/web build",
     "start": "pnpm --filter @parawrite/server start",
     "lint": "pnpm -r lint"
   },

@@ -29,13 +29,24 @@ export default function App() {
     loadMeta()
   }, [setMeta, setError])
 
+  useEffect(() => {
+    if (meta?.authRequired && !meta.authenticated) {
+      setAuthenticated(false)
+    }
+  }, [meta?.authRequired, meta?.authenticated])
+
   const handleAuthenticated = () => {
     setAuthenticated(true)
     loadMeta()
   }
 
   if (meta?.authRequired && !authenticated) {
-    return <AuthGate onAuthenticated={handleAuthenticated} />
+    return (
+      <AuthGate
+        sessionTtlHours={meta.accessSessionTtlHours}
+        onAuthenticated={handleAuthenticated}
+      />
+    )
   }
 
   return (

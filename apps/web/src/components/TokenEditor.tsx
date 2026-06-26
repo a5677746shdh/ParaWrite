@@ -19,7 +19,7 @@ import {
   type TokenSegment,
 } from '@parawrite/core/client'
 import clsx from 'clsx'
-import { wordSelectionClass } from '../ui'
+import { paneEditorTextClass, panePlaceholderClass, wordSelectionClass } from '../ui'
 
 interface TokenEditorProps {
   text: string
@@ -223,9 +223,14 @@ export const TokenEditor = memo(function TokenEditor({
 
   if (isStreaming || !text) {
     return (
-      <div className="block min-h-[6rem] w-full whitespace-pre-wrap break-words text-lg leading-relaxed text-deepl-blue">
+      <div
+        className={clsx(
+          'block min-h-[6rem] w-full whitespace-pre-wrap break-words',
+          paneEditorTextClass
+        )}
+      >
         {text || (
-          <span className="text-deepl-blue/40">{placeholder ?? '\u00a0'}</span>
+          <span className={panePlaceholderClass}>{placeholder ?? '\u00a0'}</span>
         )}
       </div>
     )
@@ -235,7 +240,7 @@ export const TokenEditor = memo(function TokenEditor({
     <div
       ref={containerRef}
       onMouseUp={handleMouseUp}
-      className="block min-h-[6rem] w-full select-text text-lg leading-relaxed text-deepl-blue"
+      className={clsx('block min-h-[6rem] w-full select-text', paneEditorTextClass)}
     >
       {segments.map((seg) => (
         <TokenSpan

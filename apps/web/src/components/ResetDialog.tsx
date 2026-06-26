@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
-import { restartServer, logoutUser } from '../api'
+import { restartServer, logoutUser, clearAccessAuth } from '../api'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import { UI_LANGUAGES } from '../i18n/languages'
 import { textButtonPx } from '../ui'
 
 function formatVersionDisplay(version: string, runtimeEnv?: string): string {
@@ -19,11 +20,13 @@ interface ResetDialogProps {
   canRestartBackend?: boolean
   userLoginEnabled?: boolean
   userAuthenticated?: boolean
+  authRequired?: boolean
   onClose: () => void
   onUiLanguageChange: (lang: string) => void
   onReloadFrontend: () => void
   onRestartSuccess: () => void
   onLogout?: () => void
+  onForgetAccessAuth?: () => void
 }
 
 export function ResetDialog({
@@ -35,17 +38,20 @@ export function ResetDialog({
   canRestartBackend,
   userLoginEnabled,
   userAuthenticated,
+  authRequired,
   onClose,
   onUiLanguageChange,
   onReloadFrontend,
   onRestartSuccess,
   onLogout,
+  onForgetAccessAuth,
 }: ResetDialogProps) {
   const { t } = useTranslation()
   const [totpCode, setTotpCode] = useState('')
   const [restartError, setRestartError] = useState(false)
   const [restarting, setRestarting] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [forgettingAccess, setForgettingAccess] = useState(false)
 
   useBodyScrollLock(open)
 
@@ -91,6 +97,20 @@ export function ResetDialog({
       // ignore
     } finally {
       setLoggingOut(false)
+    }
+  }
+
+  const handleForgetAccessAuth = async () => {
+    if (forgettingAccess) return
+    setForgettingAccess(true)
+    try {
+      await clearAccessAuth()
+      onForgetAccessAuth?.()
+      onClose()
+    } catch {
+      // ignore
+    } finally {
+      setForgettingAccess(false)
     }
   }
 
@@ -144,8 +164,11 @@ export function ResetDialog({
               className={selectClass}
               aria-label={t('uiLanguage')}
             >
-              <option value="en">{t('english')}</option>
-              <option value="zh">{t('chinese')}</option>
+              {UI_LANGUAGES.map(({ code, label }) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -194,6 +217,20 @@ export function ResetDialog({
                 {restartLabel}
               </button>
             </>
+          )}
+
+          {authRequired && !userAuthenticated && (
+            <button
+              type="button"
+              onClick={() => void handleForgetAccessAuth()}
+              disabled={forgettingAccess}
+              className={clsx(
+                actionButtonClass,
+                'border border-deepl-alert text-deepl-alert disabled:opacity-50'
+              )}
+            >
+              {t('forgetAccessAuth')}
+            </button>
           )}
 
           {userLoginEnabled && userAuthenticated && (

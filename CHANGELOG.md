@@ -4,6 +4,26 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-06-26
+
+### Added
+- Access TOTP “do not verify again for X days” checkbox (configurable via `auth.session_ttl_hours`)
+- “Forget page verification” in options when access auth is enabled; user logout also clears access session
+- Configurable server terminal logging (`logging.*` in config): security events and app/model API errors
+- Six UI languages (en, zh, ru, ja, fr, es); locale modules under `apps/web/src/i18n/locales/`
+- PWA icons under `public/icons/`; optional private `config/manifest.json` via `scripts/load-pwa-manifest.mjs`
+- Register username validation: ASCII letters and digits only (2+ characters)
+- HTTP paste fallback when Clipboard API read is unavailable
+
+### Changed
+- `npm start` prestart rebuilds core, server, and web (fixes stale server dist)
+- Source/target placeholder styling; shared `panePlaceholderClass` / `paneEditorTextClass`
+- Reset dialog language picker uses full UI language list
+
+### Fixed
+- Model API errors logged to terminal when `logging.model_api_errors` is enabled
+- Paste button works on non-HTTPS deployments
+
 ## [0.6.2] — 2026-06-26
 
 ### Added

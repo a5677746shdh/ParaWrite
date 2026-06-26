@@ -14,23 +14,40 @@ import type {
 
 const fetchOptions: RequestInit = { credentials: 'include' }
 
+async function parseApiError(res: Response, fallback: string): Promise<string> {
+  const data = await res.json().catch(() => ({}))
+  return (data as { error?: string }).error ?? fallback
+}
+
+async function throwIfNotOk(res: Response, fallback: string): Promise<void> {
+  if (!res.ok) {
+    const message = await parseApiError(res, fallback)
+    throw new Error(message)
+  }
+}
+
 export async function fetchMeta(): Promise<PublicMeta> {
   const res = await fetch('/api/meta', fetchOptions)
-  if (!res.ok) throw new Error('Failed to load config')
+  await throwIfNotOk(res, 'Failed to load config')
   return res.json()
 }
 
-export async function verifyAccess(code: string): Promise<void> {
+export async function verifyAccess(code: string, rememberMe = false): Promise<void> {
   const res = await fetch('/api/auth/verify', {
     ...fetchOptions,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, rememberMe }),
   })
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error((data as { error?: string }).error ?? 'Invalid code')
-  }
+  await throwIfNotOk(res, 'Invalid code')
+}
+
+export async function clearAccessAuth(): Promise<void> {
+  const res = await fetch('/api/auth/logout', {
+    ...fetchOptions,
+    method: 'POST',
+  })
+  await throwIfNotOk(res, 'Failed to clear access verification')
 }
 
 export async function streamTranslate(
@@ -53,7 +70,7 @@ export async function streamTranslate(
   })
 
   if (!res.ok) {
-    throw new Error('Translation request failed')
+    await throwIfNotOk(res, 'Translation request failed')
   }
 
   const reader = res.body?.getReader()
@@ -108,7 +125,7 @@ export async function fetchSynonyms(
     body: JSON.stringify(params),
     signal,
   })
-  if (!res.ok) throw new Error('Synonyms request failed')
+  await throwIfNotOk(res, 'Synonyms request failed')
   const data = await res.json()
   return data.synonyms ?? []
 }
@@ -132,7 +149,7 @@ export async function fetchRephrase(
     body: JSON.stringify(params),
     signal,
   })
-  if (!res.ok) throw new Error('Rephrase request failed')
+  await throwIfNotOk(res, 'Rephrase request failed')
   const data = await res.json()
   return data.alternatives ?? []
 }
@@ -157,7 +174,7 @@ export async function fetchDictionaryContext(
     body: JSON.stringify(params),
     signal,
   })
-  if (!res.ok) throw new Error('Dictionary context failed')
+  await throwIfNotOk(res, 'Dictionary context failed')
   return res.json()
 }
 
@@ -168,10 +185,7 @@ export async function restartServer(totpCode?: string): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(totpCode ? { totpCode } : {}),
   })
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error((data as { error?: string }).error ?? 'Restart failed')
-  }
+  await throwIfNotOk(res, 'Restart failed')
 }
 
 export async function registerUser(params: {
@@ -186,10 +200,7 @@ export async function registerUser(params: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   })
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error((data as { error?: string }).error ?? 'Registration failed')
-  }
+  await throwIfNotOk(res, 'Registration failed')
   const data = await res.json()
   return data.user
 }
@@ -205,10 +216,7 @@ export async function loginUser(params: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   })
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error((data as { error?: string }).error ?? 'Login failed')
-  }
+  await throwIfNotOk(res, 'Login failed')
   const data = await res.json()
   return data.user
 }
@@ -218,7 +226,7 @@ export async function logoutUser(): Promise<void> {
     ...fetchOptions,
     method: 'POST',
   })
-  if (!res.ok) throw new Error('Logout failed')
+  await throwIfNotOk(res, 'Logout failed')
 }
 
 export async function fetchHistory(
@@ -234,7 +242,7 @@ export async function fetchHistory(
     params.set('pageSize', String(pageSize))
   }
   const res = await fetch(`/api/history?${params}`, fetchOptions)
-  if (!res.ok) throw new Error('Failed to load history')
+  await throwIfNotOk(res, 'Failed to load history')
   return res.json()
 }
 
@@ -250,7 +258,7 @@ export async function saveHistory(params: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   })
-  if (!res.ok) throw new Error('Failed to save history')
+  await throwIfNotOk(res, 'Failed to save history')
   const data = await res.json()
   return data.entry
 }
@@ -267,7 +275,7 @@ export async function addHistoryFavorite(params: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   })
-  if (!res.ok) throw new Error('Failed to add favorite')
+  await throwIfNotOk(res, 'Failed to add favorite')
   const data = await res.json()
   return data.entry
 }
@@ -277,7 +285,7 @@ export async function toggleHistoryFavorite(id: number): Promise<TranslationHist
     ...fetchOptions,
     method: 'PATCH',
   })
-  if (!res.ok) throw new Error('Failed to toggle favorite')
+  await throwIfNotOk(res, 'Failed to toggle favorite')
   const data = await res.json()
   return data.entry
 }
@@ -287,5 +295,5 @@ export async function deleteHistoryEntry(id: number): Promise<void> {
     ...fetchOptions,
     method: 'DELETE',
   })
-  if (!res.ok) throw new Error('Failed to delete history entry')
+  await throwIfNotOk(res, 'Failed to delete history entry')
 }

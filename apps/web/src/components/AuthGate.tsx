@@ -5,14 +5,17 @@ import { verifyAccess } from '../api'
 import { textButtonPx } from '../ui'
 
 interface AuthGateProps {
+  sessionTtlHours: number
   onAuthenticated: () => void
 }
 
-export function AuthGate({ onAuthenticated }: AuthGateProps) {
+export function AuthGate({ sessionTtlHours, onAuthenticated }: AuthGateProps) {
   const { t } = useTranslation()
   const [code, setCode] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState(false)
   const [loading, setLoading] = useState(false)
+  const sessionTtlDays = Math.floor(sessionTtlHours / 24)
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault()
@@ -21,7 +24,7 @@ export function AuthGate({ onAuthenticated }: AuthGateProps) {
     setLoading(true)
     setError(false)
     try {
-      await verifyAccess(code.trim())
+      await verifyAccess(code.trim(), rememberMe)
       onAuthenticated()
     } catch {
       setError(true)
@@ -70,6 +73,16 @@ export function AuthGate({ onAuthenticated }: AuthGateProps) {
             )}
             autoFocus
           />
+        </label>
+
+        <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-deepl-blue/80">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="h-4 w-4 rounded border-deepl-border text-deepl-accent focus:ring-deepl-accent"
+          />
+          <span>{t('authRememberMe', { days: sessionTtlDays })}</span>
         </label>
 
         <button
