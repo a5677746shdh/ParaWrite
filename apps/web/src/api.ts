@@ -106,6 +106,23 @@ export async function streamTranslate(
   }
 }
 
+export async function translateText(
+  params: {
+    text: string
+    sourceLang: string
+    targetLang: string
+    provider: string
+    model: string
+  },
+  signal?: AbortSignal
+): Promise<string> {
+  let result = ''
+  await streamTranslate(params, (chunk) => {
+    result += chunk
+  }, signal)
+  return result
+}
+
 export async function fetchSynonyms(
   params: {
     word: string

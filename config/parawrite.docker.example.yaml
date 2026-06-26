@@ -27,6 +27,8 @@ app:
     #     zho-eng: 0.4
   selection_copy_enabled: false
   word_lookup_mode: adaptive
+  rephrase_hover_preview_enabled: false
+  rephrase_hover_preview_delay_ms: 800
 
 providers:
   DeepSeek:

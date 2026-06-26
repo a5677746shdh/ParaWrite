@@ -27,6 +27,8 @@ export const ja = {
     apply: '適用',
     rephrase: '言い換え',
     alternatives: '別の表現',
+    rephraseBatchBackTranslate: 'すべての言い換えを逆翻訳',
+    rephraseBatchCollapse: '逆翻訳を閉じる',
     loading: '読み込み中…',
     error: 'エラーが発生しました',
     noResults: '結果がありません',

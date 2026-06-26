@@ -40,6 +40,8 @@ app:
         zho-eng: 0.4                # 中→英：中文栏 40%；英→中：英文栏 60%（镜像，除非配置 eng-zho）
   selection_copy_enabled: false     # true：多选词时复制按钮复制选中片段
   word_lookup_mode: adaptive        # immediate | manual | adaptive（区分：窄屏手动、三列立即）
+  rephrase_hover_preview_enabled: false  # true：悬停备选表达后回译原文并高亮差异
+  rephrase_hover_preview_delay_ms: 800     # 悬停多久后触发回译（毫秒）
 
 # ---------------------------------------------------------------------------
 # LLM 服务商 / Providers

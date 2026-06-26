@@ -27,6 +27,8 @@ export const ru = {
     apply: 'Применить',
     rephrase: 'Перефразировать',
     alternatives: 'Альтернативы',
+    rephraseBatchBackTranslate: 'Обратный перевод всех вариантов',
+    rephraseBatchCollapse: 'Скрыть обратный перевод',
     loading: 'Загрузка…',
     error: 'Что-то пошло не так',
     noResults: 'Нет результатов',

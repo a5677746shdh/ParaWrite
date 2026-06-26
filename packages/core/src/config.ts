@@ -24,6 +24,7 @@ import { getPaneWidthRatiosMeta } from './layout.js'
 
 const DEFAULT_THREE_COLUMN_MIN = 1280
 const DEFAULT_TWO_COLUMN_MIN = 768
+const DEFAULT_REPHRASE_HOVER_PREVIEW_DELAY_MS = 800
 
 const DEFAULT_THEME: ThemeColors = {
   primary: '#0f2b46',
@@ -219,6 +220,15 @@ export function getWordLookupMode(config: AppConfig): WordLookupMode {
   return normalizeWordLookupMode(config.app.word_lookup_mode)
 }
 
+export function getRephraseHoverPreviewEnabled(config: AppConfig): boolean {
+  return config.app.rephrase_hover_preview_enabled ?? false
+}
+
+export function getRephraseHoverPreviewDelayMs(config: AppConfig): number {
+  const delay = config.app.rephrase_hover_preview_delay_ms ?? DEFAULT_REPHRASE_HOVER_PREVIEW_DELAY_MS
+  return Math.max(0, Math.round(delay))
+}
+
 export function isManualWordLookup(config: AppConfig): boolean {
   return getWordLookupMode(config) === 'manual'
 }
@@ -360,6 +370,8 @@ export function toPublicMeta(
     phraseWordThresholds: getPhraseWordThresholdsMeta(config),
     selectionCopyEnabled: getSelectionCopyEnabled(config),
     wordLookupMode: getWordLookupMode(config),
+    rephraseHoverPreviewEnabled: getRephraseHoverPreviewEnabled(config),
+    rephraseHoverPreviewDelayMs: getRephraseHoverPreviewDelayMs(config),
     userLogin: {
       enabled: loginEnabled,
       mode: loginMode,

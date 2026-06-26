@@ -58,6 +58,18 @@ In two-column and three-column layouts, adjust source/target pane widths by lang
 
 Ratios apply when the user selects languages or when auto-detect resolves the source language. Stacked (mobile) layout stays single-column.
 
+### Rephrase hover preview
+
+When enabled, hovering an alternative in the word panel (after a delay) back-translates it to the source language and shows the result below the option. Words that differ from the back-translation of the **current** target phrase are highlighted. The preview disappears when the pointer leaves.
+
+```yaml
+app:
+  rephrase_hover_preview_enabled: false
+  rephrase_hover_preview_delay_ms: 800
+```
+
+Requires a resolved source language (not `auto` without detection). Each hover triggers one translation API call; the baseline for the current phrase is fetched once per selection.
+
 ## Providers
 
 Each key under `providers` is a provider ID used in the UI and API.

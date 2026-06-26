@@ -27,6 +27,8 @@ export const en = {
     apply: 'Apply',
     rephrase: 'Rephrase',
     alternatives: 'Alternatives',
+    rephraseBatchBackTranslate: 'Back-translate all alternatives',
+    rephraseBatchCollapse: 'Hide back-translations',
     loading: 'Loading...',
     error: 'Something went wrong',
     noResults: 'No results',

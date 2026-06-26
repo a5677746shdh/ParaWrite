@@ -4,6 +4,19 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.2] — 2026-06-26
+
+### Added
+- Rephrase hover back-translation preview with diff highlighting (`rephrase_hover_preview_enabled`, `rephrase_hover_preview_delay_ms`)
+- Batch back-translate button for all alternatives in the word panel (toggle expand/collapse)
+
+### Changed
+- Batch back-translate button shows whenever source language is resolved, independent of hover preview setting
+
+### Fixed
+- Word panel opens as modal when resizing from three-column to two-column with an active word selection
+- Source textarea height recalculates on layout/width change (fixes truncated content after column layout switch)
+
 ## [0.7.1] — 2026-06-25
 
 ### Added

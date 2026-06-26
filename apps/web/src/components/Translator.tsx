@@ -136,6 +136,7 @@ export function Translator() {
   const handleTranslateRef = useRef<() => Promise<void>>(async () => {})
   const prevSourceForAutoRef = useRef<string | null>(null)
   const prevTargetLangRef = useRef<string | null>(null)
+  const prevLayoutModeRef = useRef<LayoutMode>('twoColumn')
   const streamBufferRef = useRef('')
   const streamRafRef = useRef<number | null>(null)
 
@@ -179,6 +180,14 @@ export function Translator() {
       window.removeEventListener('resize', updateLayout)
     }
   }, [breakpoints])
+
+  useEffect(() => {
+    const prev = prevLayoutModeRef.current
+    prevLayoutModeRef.current = layoutMode
+    if (prev === 'threeColumn' && layoutMode !== 'threeColumn' && selectedWord) {
+      setWordPanelRequested(true)
+    }
+  }, [layoutMode, selectedWord])
 
   useEffect(() => {
     if (sourceLang !== 'auto') return
@@ -704,12 +713,17 @@ export function Translator() {
   }, [isStacked, sourceRatio, targetRatio])
 
   const panelMode = isThreeColumn ? 'resident' : isStacked ? 'sheet' : 'modal'
+  const hasPanelContent =
+    isPanelLoading ||
+    synonyms.length > 0 ||
+    dictionary !== null ||
+    rephraseOptions.length > 0
   const panelVisible =
     isThreeColumn ||
-    isPanelLoading ||
-    (isManualLookup ? wordPanelRequested && !!selectedWord : !!selectedWord)
+    (!!selectedWord &&
+      (!isManualLookup || wordPanelRequested || hasPanelContent))
 
-  const sourceTextareaRef = useAutoResizeTextarea(sourceText)
+  const sourceTextareaRef = useAutoResizeTextarea(sourceText, 6, layoutMode)
 
   const isSourceEmpty = !sourceText.trim()
 
@@ -727,11 +741,8 @@ export function Translator() {
     })
   }
 
-  const paneClass = clsx(
-    'relative flex w-full min-w-0 flex-col p-4',
-    !isStacked && 'h-full min-h-0'
-  )
-  const paneContentClass = clsx('w-full', !isStacked && 'min-h-[6rem] flex-1')
+  const paneClass = clsx('relative flex w-full min-w-0 flex-col p-4')
+  const paneContentClass = clsx('w-full', !isStacked && 'min-h-[6rem]')
   const paneFooterClass = 'mt-auto shrink-0 flex w-full items-center justify-between gap-3 pt-3'
 
   const sourcePane = (
@@ -952,7 +963,12 @@ export function Translator() {
     dictionary,
     rephraseOptions,
     rephraseOriginalSentence,
+    sourceLang: effectiveSourceLang ?? sourceLang,
     targetLang,
+    provider,
+    model,
+    rephraseHoverPreviewEnabled: meta?.rephraseHoverPreviewEnabled ?? false,
+    rephraseHoverPreviewDelayMs: meta?.rephraseHoverPreviewDelayMs ?? 800,
     isPhraseSelection,
     isLoading: isPanelLoading,
     onApplySynonym: applySynonym,

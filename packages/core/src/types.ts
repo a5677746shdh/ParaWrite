@@ -172,6 +172,10 @@ export interface AppConfig {
     selection_copy_enabled?: boolean
     /** `immediate` / `manual` / `adaptive` (layout-aware manual vs immediate). */
     word_lookup_mode?: WordLookupMode
+    /** Hover on a rephrase option to back-translate and show diff vs the current phrase. */
+    rephrase_hover_preview_enabled?: boolean
+    /** Milliseconds to wait before fetching back-translation on hover. */
+    rephrase_hover_preview_delay_ms?: number
   }
   providers: Record<string, ProviderConfig>
   dictionary: DictionaryConfig
@@ -246,6 +250,8 @@ export interface PublicMeta {
   }
   selectionCopyEnabled: boolean
   wordLookupMode: WordLookupMode
+  rephraseHoverPreviewEnabled: boolean
+  rephraseHoverPreviewDelayMs: number
   userLogin: PublicUserLoginMeta
   theme: ThemeColors
   historyConfig: PublicHistoryConfig

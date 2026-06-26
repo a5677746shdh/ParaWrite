@@ -27,6 +27,8 @@ export const zh = {
     apply: '应用',
     rephrase: '改写',
     alternatives: '备选表达',
+    rephraseBatchBackTranslate: '批量回译备选表达',
+    rephraseBatchCollapse: '收起回译',
     loading: '加载中...',
     error: '出错了',
     noResults: '无结果',
