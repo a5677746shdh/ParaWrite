@@ -33,6 +33,9 @@ export const en = {
     error: 'Something went wrong',
     noResults: 'No results',
     uiLanguage: 'Interface language',
+    rememberUiLanguage: 'Remember',
+    rememberUiLanguageSaved: 'Interface language saved to your account',
+    rememberUiLanguageFailed: 'Failed to save interface language',
     selectWord: 'Click a word to see synonyms and dictionary',
     panelHint:
       'Click a word or drag to select a phrase in the translation to view synonyms, dictionary definitions, and alternative expressions.',

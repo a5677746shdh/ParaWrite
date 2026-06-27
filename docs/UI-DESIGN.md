@@ -1,6 +1,6 @@
 # ParaWrite UI Design Guide
 
-This document defines the visual and layout conventions used across the ParaWrite web app. Theme colors can be overridden via `theme` in `config/parawrite.yaml`; the frontend applies them as CSS variables at runtime.
+This document defines the visual and layout conventions used across the ParaWrite web app. Theme colors can be overridden via `theme` in `config/config.yaml`; the frontend applies them as CSS variables at runtime.
 
 ## Color tokens
 

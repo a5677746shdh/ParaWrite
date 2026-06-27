@@ -19,7 +19,6 @@ import type {
   WordLookupMode,
 } from './types.js'
 import { BUILD_VERSION } from './version.generated.js'
-import { fromConfigLang, mapConfigLangRecord } from './lang-codes.js'
 import { getPaneWidthRatiosMeta } from './layout.js'
 
 const DEFAULT_THREE_COLUMN_MIN = 1280
@@ -65,12 +64,15 @@ function resolveConfigValues<T>(obj: T): T {
 }
 
 export function findConfigPath(): string {
-  // PARWRITE_CONFIG → cwd/config/parawrite.yaml → cwd/config/parawrite.docker.yaml
+  // PARWRITE_CONFIG → cwd/config/config.yaml → cwd/config/config.docker.yaml
   const candidates = [
     process.env.PARWRITE_CONFIG,
-    path.resolve(process.cwd(), 'config/parawrite.yaml'),
-    path.resolve(process.cwd(), '../config/parawrite.yaml'),
-    path.resolve(process.cwd(), '../../config/parawrite.yaml'),
+    path.resolve(process.cwd(), 'config/config.yaml'),
+    path.resolve(process.cwd(), '../config/config.yaml'),
+    path.resolve(process.cwd(), '../../config/config.yaml'),
+    path.resolve(process.cwd(), 'config/config.docker.yaml'),
+    path.resolve(process.cwd(), '../config/config.docker.yaml'),
+    path.resolve(process.cwd(), '../../config/config.docker.yaml'),
   ].filter(Boolean) as string[]
 
   for (const candidate of candidates) {
@@ -79,14 +81,12 @@ export function findConfigPath(): string {
     }
   }
 
-  const examplePath = path.resolve(process.cwd(), 'config/parawrite.example.yaml')
+  const examplePath = path.resolve(process.cwd(), 'config/config.example.yaml')
   if (fs.existsSync(examplePath)) {
     return examplePath
   }
 
-  throw new Error(
-    'Config not found. Copy config/parawrite.example.yaml to config/parawrite.yaml'
-  )
+  throw new Error('Config not found. Copy config/config.example.yaml to config/config.yaml')
 }
 
 export function getConfigDir(configPath?: string): string {
@@ -167,24 +167,20 @@ export function getLayoutBreakpoints(config: AppConfig) {
 
 export function resolveAlternativesSeparator(
   config: AppConfig,
-  targetLang6391: string
+  targetLang: string
 ): AlternativesSeparator {
   const sepConfig = config.app.alternatives_separator
   const defaultSep = sepConfig?.default ?? 'comma'
   if (!sepConfig?.by_language) return defaultSep
 
-  const byLang = mapConfigLangRecord(sepConfig.by_language)
-  return byLang[targetLang6391] ?? defaultSep
+  return sepConfig.by_language[targetLang] ?? defaultSep
 }
 
 export function getAlternativesSeparatorsMeta(config: AppConfig) {
   const sepConfig = config.app.alternatives_separator
   return {
     default: (sepConfig?.default ?? 'comma') as AlternativesSeparator,
-    byLanguage: mapConfigLangRecord(sepConfig?.by_language) as Record<
-      string,
-      AlternativesSeparator
-    >,
+    byLanguage: (sepConfig?.by_language ?? {}) as Record<string, AlternativesSeparator>,
   }
 }
 
@@ -192,7 +188,7 @@ export function getPhraseWordThresholdsMeta(config: AppConfig) {
   const thresholdConfig = config.app.phrase_word_threshold
   return {
     default: thresholdConfig?.default ?? 1,
-    byLanguage: mapConfigLangRecord(thresholdConfig?.by_language) as Record<string, number>,
+    byLanguage: (thresholdConfig?.by_language ?? {}) as Record<string, number>,
   }
 }
 
@@ -229,20 +225,23 @@ export function getRephraseHoverPreviewDelayMs(config: AppConfig): number {
   return Math.max(0, Math.round(delay))
 }
 
+export function getAutoSwapLanguages(config: AppConfig): boolean {
+  return config.app.auto_swap_languages ?? false
+}
+
 export function isManualWordLookup(config: AppConfig): boolean {
   return getWordLookupMode(config) === 'manual'
 }
 
 export function resolvePhraseWordThreshold(
   config: AppConfig,
-  targetLang6391: string
+  targetLang: string
 ): number {
   const thresholdConfig = config.app.phrase_word_threshold
   const defaultThreshold = thresholdConfig?.default ?? 1
   if (!thresholdConfig?.by_language) return defaultThreshold
 
-  const byLang = mapConfigLangRecord(thresholdConfig.by_language)
-  return byLang[targetLang6391] ?? defaultThreshold
+  return thresholdConfig.by_language[targetLang] ?? defaultThreshold
 }
 
 export function isAccessAuthEnabled(config: AppConfig): boolean {
@@ -372,6 +371,7 @@ export function toPublicMeta(
     wordLookupMode: getWordLookupMode(config),
     rephraseHoverPreviewEnabled: getRephraseHoverPreviewEnabled(config),
     rephraseHoverPreviewDelayMs: getRephraseHoverPreviewDelayMs(config),
+    autoSwapLanguages: getAutoSwapLanguages(config),
     userLogin: {
       enabled: loginEnabled,
       mode: loginMode,

@@ -26,8 +26,14 @@ import {
   isAccessAuthEnabled,
   isRestartAuthEnabled,
   isUserLoginEnabled,
+  loadUserGlossary,
+  loadUserPreferencesConfig,
+  mergeGlossaryEntries,
+  mergeUserPreferences,
   parseJsonResponse,
   resolveDataDir,
+  resolveUserConfigPath,
+  resolveUserGlossaryPath,
   ASSETLINKS_SERVE_PATH,
   resolveAssetLinksPath,
   loadAssetLinksFile,
@@ -114,6 +120,48 @@ function getUserLoginMeta(
       nickname: profile.nickname,
     },
   }
+}
+
+function resolveEffectiveConfig(
+  baseConfig: AppConfig,
+  configPath: string | undefined,
+  userService: UserService | null,
+  userSessionManager: UserSessionManager | null,
+  userToken: string | undefined
+): AppConfig {
+  if (!userService || !userSessionManager) return baseConfig
+  const userId = userSessionManager.getUserId(userToken)
+  if (!userId) return baseConfig
+  const profile = userService.getById(userId)
+  if (!profile) return baseConfig
+  const prefsPath = resolveUserConfigPath(profile.configId, baseConfig, configPath)
+  const prefs = loadUserPreferencesConfig(prefsPath, baseConfig)
+  if (!prefs) return baseConfig
+  return mergeUserPreferences(baseConfig, prefs)
+}
+
+function resolveEffectiveGlossary(
+  globalGlossary: GlossaryService,
+  baseConfig: AppConfig,
+  configPath: string | undefined,
+  userService: UserService | null,
+  userSessionManager: UserSessionManager | null,
+  userToken: string | undefined
+): GlossaryService {
+  let entries = globalGlossary.getEntries()
+  if (!userService || !userSessionManager) {
+    return GlossaryService.fromEntries(entries)
+  }
+  const userId = userSessionManager.getUserId(userToken)
+  if (!userId) return GlossaryService.fromEntries(entries)
+  const profile = userService.getById(userId)
+  if (!profile) return GlossaryService.fromEntries(entries)
+  const glossaryPath = resolveUserGlossaryPath(profile.glossaryId, baseConfig, configPath)
+  const userEntries = loadUserGlossary(glossaryPath)
+  if (userEntries.length > 0) {
+    entries = mergeGlossaryEntries(entries, userEntries)
+  }
+  return GlossaryService.fromEntries(entries)
 }
 
 export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> {
@@ -224,7 +272,15 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
         ? getUserLoginMeta(userSessionManager, userService, userToken)
         : { authenticated: false, user: null }
 
-    return c.json(toPublicMeta(config, authenticated, userLogin))
+    const effectiveConfig = resolveEffectiveConfig(
+      config,
+      configPath,
+      userService,
+      userSessionManager,
+      userToken
+    )
+
+    return c.json(toPublicMeta(effectiveConfig, authenticated, userLogin))
   })
 
   app.post('/api/auth/verify', async (c) => {
@@ -394,7 +450,33 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
         username: profile.username,
         nickname: profile.nickname,
         note: profile.note,
+        email: profile.email,
+        phone: profile.phone,
+        locale: profile.locale,
+        configId: profile.configId,
+        glossaryId: profile.glossaryId,
       })
+    })
+
+    app.patch('/api/user/locale', async (c) => {
+      const token = getCookie(c, USER_SESSION_COOKIE_NAME)
+      const userId = userSessionManager.getUserId(token)
+      if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+
+      const body = await c.req.json<{ locale?: string }>()
+      const locale = body.locale?.trim()
+      if (!locale) return c.json({ error: 'Locale is required' }, 400)
+
+      try {
+        const profile = userService.updateLocale(userId, locale)
+        if (!profile) return c.json({ error: 'Unauthorized' }, 401)
+        return c.json({ locale: profile.locale })
+      } catch (err) {
+        if (err instanceof UserError) {
+          return c.json({ error: err.message }, 400)
+        }
+        throw err
+      }
     })
 
     app.get('/api/history', (c) => {
@@ -508,8 +590,18 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
     const model = body.model ?? getDefaultModel(config, provider)
     const engine = getEngine(provider)
 
-    const relevantGlossary = glossary.findRelevant(body.text, body.sourceLang)
-    const glossarySection = glossary.buildPromptSection(
+    const userToken = getCookie(c, USER_SESSION_COOKIE_NAME)
+    const effectiveGlossary = resolveEffectiveGlossary(
+      glossary,
+      config,
+      configPath,
+      userService,
+      userSessionManager,
+      userToken
+    )
+
+    const relevantGlossary = effectiveGlossary.findRelevant(body.text, body.sourceLang)
+    const glossarySection = effectiveGlossary.buildPromptSection(
       relevantGlossary,
       body.text,
       body.sourceLang,

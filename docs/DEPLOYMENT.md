@@ -15,7 +15,7 @@ Copy [`.env.example`](../.env.example) as a starting point. Never commit real ke
 ## Production (Node)
 
 ```bash
-cp config/parawrite.example.yaml config/parawrite.yaml
+cp config/config.example.yaml config/config.yaml
 # Edit config and set API keys
 pnpm build
 pnpm start
@@ -28,7 +28,7 @@ Health check: `GET /health`
 ## Docker
 
 ```bash
-cp config/parawrite.example.yaml config/parawrite.yaml
+cp config/config.example.yaml config/config.yaml
 export OPENAI_API_KEY=your-key-here
 docker compose -f docker/docker-compose.yml up --build
 ```
@@ -92,7 +92,7 @@ ParaWrite serves this from your local config file:
 
 1. Copy the template: `cp config/assetlinks.example.json config/assetlinks.json`
 2. Edit `package_name` and `sha256_cert_fingerprints` to match your Android signing key
-3. Ensure `pwa.assetlinks_file` in `parawrite.yaml` points to that file (default: `config/assetlinks.json`)
+3. Ensure `pwa.assetlinks_file` in `config.yaml` points to that file (default: `config/assetlinks.json`)
 4. Deploy behind **HTTPS** on the same origin as your PWA
 
 Verify:
@@ -105,7 +105,7 @@ The route is public (bypasses TOTP access gate) so Google Play / Android can fet
 
 ## Security checklist
 
-- Keep `config/parawrite.yaml` out of version control (gitignored)
+- Keep `config/config.yaml` out of version control (gitignored)
 - Use TOTP access gate (`auth.access_totp_secret`) on public deployments
 - Restrict user registration with `users.login.mode: restricted` when appropriate
 - Run behind HTTPS in production so secure cookies work as intended

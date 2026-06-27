@@ -30,7 +30,7 @@ COPY --from=build /app/apps/server/package.json ./apps/server/
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/packages/core/dist ./packages/core/dist
 COPY --from=build /app/packages/core/package.json ./packages/core/
-COPY --from=build /app/config/parawrite.example.yaml ./config/parawrite.example.yaml
+COPY --from=build /app/config/config.example.yaml ./config/config.example.yaml
 
 EXPOSE 8787
 CMD ["node", "apps/server/dist/index.js"]

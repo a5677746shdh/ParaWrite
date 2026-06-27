@@ -6,7 +6,7 @@ Thank you for your interest in contributing!
 
 1. Fork the repository and clone your fork.
 2. Install dependencies: `pnpm install`
-3. Copy config: `cp config/parawrite.example.yaml config/parawrite.yaml`
+3. Copy config: `cp config/config.example.yaml config/config.yaml`
 4. Set API keys via environment variables or `.env` (see [`.env.example`](.env.example)).
 5. Run development: `pnpm dev`
 
@@ -46,7 +46,7 @@ Examples:
 
 ## Security
 
-Do not commit API keys, `config/parawrite.yaml`, database files, or the local `refer/` reference library. Report vulnerabilities per [SECURITY.md](SECURITY.md).
+Do not commit API keys, `config/config.yaml`, database files, or the local `refer/` reference library. Report vulnerabilities per [SECURITY.md](SECURITY.md).
 
 ## Questions
 

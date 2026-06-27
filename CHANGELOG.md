@@ -4,6 +4,26 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-06-27
+
+### Added
+- Per-user `config_id` / `glossary_id` with optional YAML overrides (`user-configs/`, `user-glossaries/`) merged at runtime for logged-in users
+- User profile fields: `locale`, `email`, `phone`, `user_key`, plus reserved columns for future use
+- **Remember** interface language preference (Settings → language selector) stored in `users.locale` and applied on sign-in
+- `auto_swap_languages`: when enabled, swap language pair if source text matches target language; dedicated swap icon
+- `PATCH /api/user/locale`; `/api/meta` and `/api/translate` merge user preferences and glossary when authenticated
+- Example files: `config/config.example.yaml`, `config/glossary.example.yaml`, `config/user.config.example.yaml`, `config/user.glossary.example.yaml`
+- Unit tests for user preference merge and glossary merge
+
+### Changed
+- Config file rename: `parawrite.yaml` → `config.yaml`, `custom-dictionary.yaml` → `glossary.yaml` (ISO 639-1 keys throughout)
+- Removed ISO 639-2 `lang-codes` mapping layer; glossary and layout config use `zh`, `en`, `ja`, etc. directly
+
+### Fixed
+- Favorite action no longer duplicates history rows when a matching translation already exists
+- Rephrase hover back-translation no longer aborts immediately in sheet/modal layout (hover zone includes preview area)
+- Auto language swap keeps source text in the source pane instead of moving it to the target pane
+
 ## [0.7.2] — 2026-06-26
 
 ### Added

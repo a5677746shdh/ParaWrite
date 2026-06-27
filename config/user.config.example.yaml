@@ -1,0 +1,10 @@
+# Per-user config (app + theme only). Stored as data/user-configs/{config_id}.yaml
+# Language keys in app.* use ISO 639-1 (zh, en, ja, …).
+
+app:
+  auto_translate_delay_seconds: 1
+  translate_on_enter: true
+
+theme:
+  primary: '#1a2b3c'
+  accent: '#4a90d9'

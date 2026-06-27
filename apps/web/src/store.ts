@@ -9,8 +9,10 @@ import type {
   RephraseOption,
   SelectionGranularity,
   SynonymOption,
+  UserMeProfile,
 } from '@parawrite/core/client'
-import { fetchMeta } from './api'
+import { fetchMeta, fetchUserMe } from './api'
+import { applyUiLanguage } from './lib/ui-language'
 
 interface TranslationState {
   meta: PublicMeta | null
@@ -33,13 +35,17 @@ interface TranslationState {
   rephraseOriginalSentence: string | null
   isPanelLoading: boolean
   historyRefreshKey: number
+  userLocale: string | null
   setMeta: (meta: PublicMeta) => void
   refreshMeta: () => Promise<PublicMeta>
+  syncUserLocale: () => Promise<UserMeProfile | null>
+  setUserLocale: (locale: string | null) => void
   bumpHistoryRefresh: () => void
   setSourceLang: (lang: string) => void
   setTargetLang: (lang: string) => void
   setDetectedSourceLang: (lang: string | null) => void
   swapLanguages: () => void
+  autoSwapLanguages: (partnerLang: string) => void
   setProvider: (provider: string) => void
   setModel: (model: string) => void
   setProviderModel: (provider: string, model: string) => void
@@ -83,6 +89,7 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
   rephraseOriginalSentence: null,
   isPanelLoading: false,
   historyRefreshKey: 0,
+  userLocale: null,
   setMeta: (meta) =>
     set({
       meta,
@@ -96,8 +103,27 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
       provider: meta.defaultProvider,
       model: meta.defaultModel,
     })
+    if (meta.userLogin?.authenticated) {
+      await get().syncUserLocale()
+    } else {
+      set({ userLocale: null })
+    }
     return meta
   },
+  syncUserLocale: async () => {
+    try {
+      const profile = await fetchUserMe()
+      set({ userLocale: profile.locale })
+      if (profile.locale) {
+        applyUiLanguage(profile.locale)
+      }
+      return profile
+    } catch {
+      set({ userLocale: null })
+      return null
+    }
+  },
+  setUserLocale: (userLocale) => set({ userLocale }),
   bumpHistoryRefresh: () =>
     set((s) => ({ historyRefreshKey: s.historyRefreshKey + 1 })),
   setSourceLang: (sourceLang) => set({ sourceLang, detectedSourceLang: null }),
@@ -114,6 +140,17 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
       sourceText: targetText,
       targetText: sourceText,
       detectedSourceLang: null,
+    })
+  },
+  autoSwapLanguages: (partnerLang) => {
+    const { targetLang } = get()
+    if (partnerLang === targetLang) return
+
+    set({
+      sourceLang: targetLang,
+      targetLang: partnerLang,
+      detectedSourceLang: null,
+      targetText: '',
     })
   },
   setProvider: (provider) => {

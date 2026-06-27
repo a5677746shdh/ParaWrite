@@ -1,0 +1,15 @@
+# Global glossary — domain-specific translations per language (ISO 639-1 keys).
+# Copy to config/glossary.yaml and edit locally.
+# Each entry maps the same concept across languages; matched terms are injected into the translation prompt.
+
+entries:
+  - translations:
+      zh: 你好
+      en: Hello
+      fr: Bonjour
+      de: Hallo
+  - translations:
+      zh: 谢谢
+      en: Thank you
+      fr: Merci
+      de: Danke

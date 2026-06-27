@@ -137,6 +137,55 @@ export class HistoryService {
 
   addFavorite(userId: number, input: SaveHistoryInput): TranslationHistoryEntry {
     const now = Date.now()
+    const existing = this.findMatchingEntry(userId, input)
+
+    if (existing) {
+      if (existing.is_favorite === 1) {
+        return rowToEntry(existing)
+      }
+      this.db
+        .prepare(
+          `UPDATE translation_history
+           SET is_favorite = 1, created_at = ?
+           WHERE id = ? AND user_id = ?`
+        )
+        .run(now, existing.id, userId)
+
+      const updated = this.db
+        .prepare('SELECT * FROM translation_history WHERE id = ?')
+        .get(existing.id) as HistoryRow
+      return rowToEntry(updated)
+    }
+
+    const last = this.getLatestNonFavorite(userId)
+    if (
+      last &&
+      textSimilarity(input.sourceText, last.source_text) >= this.similarityThreshold &&
+      now - last.created_at < this.dedupIntervalSeconds * 1000
+    ) {
+      this.db
+        .prepare(
+          `UPDATE translation_history
+           SET source_text = ?, target_text = ?, source_lang = ?, target_lang = ?,
+               is_favorite = 1, created_at = ?
+           WHERE id = ? AND user_id = ?`
+        )
+        .run(
+          input.sourceText,
+          input.targetText,
+          input.sourceLang,
+          input.targetLang,
+          now,
+          last.id,
+          userId
+        )
+
+      const updated = this.db
+        .prepare('SELECT * FROM translation_history WHERE id = ?')
+        .get(last.id) as HistoryRow
+      return rowToEntry(updated)
+    }
+
     const result = this.db
       .prepare(
         `INSERT INTO translation_history
@@ -191,5 +240,29 @@ export class HistoryService {
          LIMIT 1`
       )
       .get(userId) as HistoryRow | undefined
+  }
+
+  private findMatchingEntry(
+    userId: number,
+    input: SaveHistoryInput
+  ): HistoryRow | undefined {
+    return this.db
+      .prepare(
+        `SELECT * FROM translation_history
+         WHERE user_id = ?
+           AND source_text = ?
+           AND target_text = ?
+           AND source_lang = ?
+           AND target_lang = ?
+         ORDER BY is_favorite ASC, created_at DESC
+         LIMIT 1`
+      )
+      .get(
+        userId,
+        input.sourceText,
+        input.targetText,
+        input.sourceLang,
+        input.targetLang
+      ) as HistoryRow | undefined
   }
 }

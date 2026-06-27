@@ -59,9 +59,9 @@ User login modes: `disabled`, `restricted` (whitelist registration), `open`.
 
 | Path | Contents |
 |------|----------|
-| `config/parawrite.yaml` | Local secrets and settings (gitignored) |
+| `config/config.yaml` | Local secrets and settings (gitignored) |
 | `data/` | SQLite database `parawrite.db` (gitignored) |
-| `config/custom-dictionary.yaml` | Optional glossary terms |
+| `config/glossary.yaml` | Optional glossary terms |
 
 Override paths with `PARWRITE_CONFIG` and `PARWRITE_DATA_DIR` environment variables.
 

@@ -7,11 +7,11 @@ import {
 
 const zhEnRatios = {
   default: 0.5,
-  byPair: mapPaneWidthPairRatios({ 'zho-eng': 0.4 }, 0.5),
+  byPair: mapPaneWidthPairRatios({ 'zh-en': 0.4 }, 0.5),
 }
 
 describe('mapPaneWidthPairRatios', () => {
-  it('maps ISO 639-2 pair keys to ISO 639-1', () => {
+  it('normalizes ISO 639-1 pair keys', () => {
     assert.deepEqual(zhEnRatios.byPair, { 'zh-en': 0.4 })
   })
 })

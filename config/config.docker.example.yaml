@@ -16,15 +16,15 @@ app:
   alternatives_separator:
     default: comma
     by_language:
-      zho: period
-      jpn: period
+      zh: period
+      ja: period
   layout:
     three_column_min_width: 1280
     two_column_min_width: 768
     # pane_width_ratios:
     #   default: 0.5
     #   by_pair:
-    #     zho-eng: 0.4
+    #     zh-en: 0.4
   selection_copy_enabled: false
   word_lookup_mode: adaptive
   rephrase_hover_preview_enabled: false
@@ -46,7 +46,7 @@ dictionary:
   llm_fallback: true
 
 glossary:
-  file: config/custom-dictionary.yaml
+  file: config/glossary.yaml
 
 pwa:
   assetlinks_file: config/assetlinks.json

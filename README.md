@@ -39,8 +39,8 @@ More UI details: [docs/UI-DESIGN.md](docs/UI-DESIGN.md).
 
 ```bash
 pnpm install
-cp config/parawrite.example.yaml config/parawrite.yaml
-export OPENAI_API_KEY=your-key-here   # or set keys in parawrite.yaml
+cp config/config.example.yaml config/config.yaml
+export OPENAI_API_KEY=your-key-here   # or set keys in config.yaml
 pnpm dev
 ```
 

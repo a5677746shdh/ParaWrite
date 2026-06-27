@@ -1,4 +1,3 @@
-import { fromConfigLang } from './lang-codes.js'
 import type { PaneWidthRatioResult, PublicPaneWidthRatios } from './types.js'
 
 const DEFAULT_PANE_RATIO = 0.5
@@ -8,7 +7,7 @@ function clampRatio(value: number, fallback: number): number {
   return value
 }
 
-/** Map config `zho-eng` keys to runtime `zh-en` (ISO 639-1) pair keys. */
+/** Normalize pane_width_ratios.by_pair keys (ISO 639-1, e.g. zh-en). */
 export function mapPaneWidthPairRatios(
   byPair: Record<string, number> | undefined,
   defaultRatio: number
@@ -23,8 +22,8 @@ export function mapPaneWidthPairRatios(
       continue
     }
     const [langA, langB] = parts
-    const mappedKey = `${fromConfigLang(langA)}-${fromConfigLang(langB)}`
-    result[mappedKey] = clampRatio(raw, defaultRatio)
+    const normalizedKey = `${langA.toLowerCase()}-${langB.toLowerCase()}`
+    result[normalizedKey] = clampRatio(raw, defaultRatio)
   }
   return result
 }

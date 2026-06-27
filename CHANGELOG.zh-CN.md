@@ -4,6 +4,26 @@
 
 ## [未发布]
 
+## [0.8.0] — 2026-06-27
+
+### 新增
+- 用户独立 `config_id` / `glossary_id`，登录后合并用户偏好 YAML 与术语表
+- 用户资料扩展：`locale`、`email`、`phone`、`user_key` 及预留字段
+- 设置中 **记住** 界面语言偏好，写入 `users.locale`，下次登录自动应用
+- `auto_swap_languages`：检测到原文语言与目标语言相同时自动交换语言对；交换按钮专用图标
+- `PATCH /api/user/locale`；已登录时 `/api/meta` 与 `/api/translate` 合并用户配置与术语表
+- 示例文件：`config.example.yaml`、`glossary.example.yaml`、`user.config.example.yaml`、`user.glossary.example.yaml`
+- 用户配置与术语表合并的单元测试
+
+### 变更
+- 配置文件重命名：`parawrite.yaml` → `config.yaml`，`custom-dictionary.yaml` → `glossary.yaml`；统一 ISO 639-1 语言代码
+- 移除 ISO 639-2 映射层
+
+### 修复
+- 收藏翻译时不再重复插入已有历史记录
+- 弹窗/底部 sheet 布局下备选表达悬停回译不再瞬间 abort
+- 自动语言交换时原文保留在原文框，不再误移到译文框
+
 ## [0.7.2] — 2026-06-26
 
 ### 新增

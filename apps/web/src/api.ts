@@ -10,6 +10,7 @@ import type {
   RephraseOption,
   SynonymOption,
   TranslationHistoryEntry,
+  UserMeProfile,
 } from '@parawrite/core/client'
 
 const fetchOptions: RequestInit = { credentials: 'include' }
@@ -244,6 +245,23 @@ export async function logoutUser(): Promise<void> {
     method: 'POST',
   })
   await throwIfNotOk(res, 'Logout failed')
+}
+
+export async function fetchUserMe(): Promise<UserMeProfile> {
+  const res = await fetch('/api/user/me', fetchOptions)
+  await throwIfNotOk(res, 'Failed to load user profile')
+  return res.json()
+}
+
+export async function updateUserLocale(locale: string): Promise<{ locale: string | null }> {
+  const res = await fetch('/api/user/locale', {
+    ...fetchOptions,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ locale }),
+  })
+  await throwIfNotOk(res, 'Failed to save locale')
+  return res.json()
 }
 
 export async function fetchHistory(

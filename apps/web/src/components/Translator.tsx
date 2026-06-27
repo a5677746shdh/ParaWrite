@@ -106,6 +106,8 @@ export function Translator() {
     setPanelLoading,
     clear,
     bumpHistoryRefresh,
+    autoSwapLanguages,
+    userLocale,
   } = useTranslationStore(
     useShallow((s) => ({
       setSourceText: s.setSourceText,
@@ -122,6 +124,8 @@ export function Translator() {
       setPanelLoading: s.setPanelLoading,
       clear: s.clear,
       bumpHistoryRefresh: s.bumpHistoryRefresh,
+      autoSwapLanguages: s.autoSwapLanguages,
+      userLocale: s.userLocale,
     }))
   )
 
@@ -203,6 +207,43 @@ export function Translator() {
 
     return () => clearTimeout(timer)
   }, [sourceText, sourceLang, setDetectedSourceLang])
+
+  useEffect(() => {
+    if (!meta?.autoSwapLanguages || !sourceText.trim()) return
+
+    const timer = setTimeout(() => {
+      const detected = detectTextLanguage(sourceText)
+      if (!detected || detected !== targetLang) return
+      if (sourceLang !== 'auto' && sourceLang === targetLang) return
+
+      let partnerLang: string
+      if (sourceLang === 'auto') {
+        if (userLocale) {
+          partnerLang = resolveUiLang(userLocale)
+          if (partnerLang === detected) {
+            partnerLang = resolveUiLang(i18n.language)
+          }
+        } else {
+          partnerLang = resolveUiLang(i18n.language)
+        }
+      } else {
+        partnerLang = sourceLang
+      }
+
+      if (partnerLang === detected) return
+      autoSwapLanguages(partnerLang)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [
+    sourceText,
+    sourceLang,
+    targetLang,
+    meta?.autoSwapLanguages,
+    userLocale,
+    i18n.language,
+    autoSwapLanguages,
+  ])
 
   const handleTranslate = useCallback(async () => {
     if (!sourceText.trim() || !provider || !model) return

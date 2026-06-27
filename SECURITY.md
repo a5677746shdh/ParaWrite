@@ -20,7 +20,7 @@ We aim to acknowledge reports within a few business days.
 
 ## Secrets and deployment
 
-- **API keys** belong in environment variables or local `config/parawrite.yaml` (gitignored). Never commit real keys.
+- **API keys** belong in environment variables or local `config/config.yaml` (gitignored). Never commit real keys.
 - **TOTP secrets** (`auth.access_totp_secret`, `auth.restart_totp_secret`) grant deployment-level access. Treat them like passwords.
 - **User passwords** are stored as hashes in SQLite; the database file (`data/parawrite.db`) must not be published.
 - Run production instances behind **HTTPS** so session cookies are protected in transit.

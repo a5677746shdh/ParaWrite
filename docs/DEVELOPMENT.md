@@ -4,7 +4,7 @@
 
 ```bash
 pnpm install
-cp config/parawrite.example.yaml config/parawrite.yaml
+cp config/config.example.yaml config/config.yaml
 export OPENAI_API_KEY=your-key-here
 pnpm dev
 ```
@@ -46,7 +46,7 @@ These paths are listed in `.gitignore`. They are **not** part of the published r
 | `refer/` | Project reference library (design sources, Affinity `.af` files, icon drafts). Shipped assets live under `apps/web/public/`. |
 | `artifacts/` | Output of `pnpm package:beta` — safe to delete and regenerate |
 | `ai-memory/` | Optional local AI session notes |
-| `config/parawrite.yaml` | Local secrets and overrides |
+| `config/config.yaml` | Local secrets and overrides |
 | `config/manifest.json` | Private PWA manifest (copy from `config/manifest.example.json` or PWABuilder) |
 | `config/icons/` | Optional private PWA/header icon overrides for packaging |
 
@@ -60,7 +60,7 @@ These paths are listed in `.gitignore`. They are **not** part of the published r
 
 ## Adding a provider
 
-1. Add a block under `providers` in `config/parawrite.yaml`
+1. Add a block under `providers` in `config/config.yaml`
 2. Set `type` to `openai_compatible`, `claude`, or `ollama`
 3. List models with one `default: true`
 4. Restart the server; optional model availability check logs on startup (non-blocking)

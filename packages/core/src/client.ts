@@ -15,5 +15,6 @@ export type {
   ThemeColors,
   TranslationHistoryEntry,
   UserProfile,
+  UserMeProfile,
 } from './types.js'
 export type { DiffPart } from './diff.js'

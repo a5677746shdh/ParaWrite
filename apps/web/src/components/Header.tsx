@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useTranslationStore } from '../store'
 import { LanguageSelect } from './LanguageSelect'
 import { ResetDialog } from './ResetDialog'
+import { AutoSwapIcon } from '../icons/AutoSwapIcon'
 
 const PROVIDER_MODEL_SEP = '::'
 
@@ -108,7 +109,10 @@ export function Header() {
     }))
   )
 
-  const canSwapLanguages = sourceLang !== 'auto' || Boolean(detectedSourceLang)
+  const canSwapLanguages =
+    meta?.autoSwapLanguages ||
+    sourceLang !== 'auto' ||
+    Boolean(detectedSourceLang)
 
   const [optionsOpen, setOptionsOpen] = useState(false)
   const [restartMessage, setRestartMessage] = useState<string | null>(null)
@@ -193,7 +197,7 @@ export function Header() {
               title={t('swapLanguages')}
               disabled={!canSwapLanguages}
             >
-              <SwapIcon />
+              {meta?.autoSwapLanguages ? <AutoSwapIcon /> : <SwapIcon />}
             </HeaderIconButton>
 
             <LanguageSelect

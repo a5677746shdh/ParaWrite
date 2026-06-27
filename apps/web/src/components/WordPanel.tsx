@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, useMemo, type MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import { diffHighlight } from '@parawrite/core/client'
@@ -238,6 +238,8 @@ const RephraseOptionRow = memo(function RephraseOptionRow({
       return
     }
 
+    if (abortRef.current || preview) return
+
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
     hoverTimerRef.current = setTimeout(() => {
       hoverTimerRef.current = null
@@ -266,15 +268,23 @@ const RephraseOptionRow = memo(function RephraseOptionRow({
     }, previewDelayMs)
   }
 
+  const handleMouseLeave = (e: MouseEvent<HTMLLIElement>) => {
+    const next = e.relatedTarget
+    if (next instanceof Node && e.currentTarget.contains(next)) return
+    clearHoverPreview()
+  }
+
   const showHoverPreview = previewEnabled && (previewLoading || preview)
 
   return (
-    <li>
+    <li
+      className="rounded-lg"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <button
         type="button"
         onClick={() => onApply(opt.text)}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={clearHoverPreview}
         className={optionListButtonClass}
       >
         {originalTarget ? (

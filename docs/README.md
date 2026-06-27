@@ -14,6 +14,6 @@ Technical documentation for ParaWrite. For a quick overview, see the [main READM
 ## Other references
 
 - [CHANGELOG.md](../CHANGELOG.md) — Release history
-- [config/parawrite.example.yaml](../config/parawrite.example.yaml) — Annotated configuration template
+- [config/config.example.yaml](../config/config.example.yaml) — Annotated configuration template
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — How to contribute
 - [SECURITY.md](../SECURITY.md) — Security policy and secret handling

@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
-import { restartServer, logoutUser, clearAccessAuth } from '../api'
+import { restartServer, logoutUser, clearAccessAuth, updateUserLocale } from '../api'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
-import { UI_LANGUAGES } from '../i18n/languages'
+import { UI_LANGUAGES, isUiLanguageCode } from '../i18n/languages'
+import { applyUiLanguage } from '../lib/ui-language'
+import { useTranslationStore } from '../store'
 import { textButtonPx } from '../ui'
 
 function formatVersionDisplay(version: string, runtimeEnv?: string): string {
@@ -52,6 +54,13 @@ export function ResetDialog({
   const [restarting, setRestarting] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [forgettingAccess, setForgettingAccess] = useState(false)
+  const [rememberingLocale, setRememberingLocale] = useState(false)
+  const [localeSaved, setLocaleSaved] = useState(false)
+  const setUserLocale = useTranslationStore((s) => s.setUserLocale)
+
+  useEffect(() => {
+    setLocaleSaved(false)
+  }, [uiLanguage])
 
   useBodyScrollLock(open)
 
@@ -78,6 +87,7 @@ export function ResetDialog({
   const handleClose = () => {
     setTotpCode('')
     setRestartError(false)
+    setLocaleSaved(false)
     onClose()
   }
 
@@ -97,6 +107,27 @@ export function ResetDialog({
       // ignore
     } finally {
       setLoggingOut(false)
+    }
+  }
+
+  const handleRememberLocale = async () => {
+    if (!userAuthenticated || rememberingLocale || localeSaved) return
+    const lang = uiLanguage.split('-')[0]
+    if (!isUiLanguageCode(lang)) return
+
+    setRememberingLocale(true)
+    try {
+      const result = await updateUserLocale(lang)
+      if (result.locale) {
+        setUserLocale(result.locale)
+        applyUiLanguage(result.locale)
+        onUiLanguageChange(result.locale)
+        setLocaleSaved(true)
+      }
+    } catch {
+      // allow retry on failure
+    } finally {
+      setRememberingLocale(false)
     }
   }
 
@@ -125,6 +156,9 @@ export function ResetDialog({
 
   const selectClass =
     'h-10 flex-1 rounded-lg border border-deepl-border bg-white px-3 py-0 text-sm leading-10 outline-none focus:border-deepl-accent'
+
+  const rememberButtonClass =
+    'flex h-10 w-[4.875rem] shrink-0 items-center justify-center rounded-lg border border-deepl-border text-sm text-deepl-blue hover:bg-deepl-light'
 
   return (
     <div
@@ -170,6 +204,38 @@ export function ResetDialog({
                 </option>
               ))}
             </select>
+            {userAuthenticated && (
+              <button
+                type="button"
+                onClick={() => void handleRememberLocale()}
+                disabled={rememberingLocale || localeSaved}
+                aria-label={t('rememberUiLanguage')}
+                className={clsx(
+                  rememberButtonClass,
+                  rememberingLocale && 'opacity-50',
+                  localeSaved && 'pointer-events-none border-deepl-success/40'
+                )}
+              >
+                {localeSaved ? (
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-deepl-success"
+                    aria-hidden="true"
+                  >
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                ) : (
+                  t('rememberUiLanguage')
+                )}
+              </button>
+            )}
           </div>
 
           <button

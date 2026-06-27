@@ -33,6 +33,9 @@ export const fr = {
     error: 'Une erreur est survenue',
     noResults: 'Aucun résultat',
     uiLanguage: "Langue de l'interface",
+    rememberUiLanguage: 'Mémoriser',
+    rememberUiLanguageSaved: "Langue d'interface enregistrée sur votre compte",
+    rememberUiLanguageFailed: "Échec de l'enregistrement de la langue d'interface",
     selectWord: 'Cliquez sur un mot pour voir les synonymes et le dictionnaire',
     panelHint:
       'Cliquez sur un mot ou sélectionnez une expression dans la traduction pour voir les synonymes, définitions et formulations alternatives.',

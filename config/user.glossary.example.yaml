@@ -1,0 +1,10 @@
+# Per-user glossary. Stored as data/user-glossaries/{glossary_id}.yaml
+# Same format as config/glossary.yaml (ISO 639-1 keys).
+
+entries:
+  - translations:
+      zh: 你好
+      en: Hello
+  - translations:
+      zh: 谢谢
+      en: Thank you

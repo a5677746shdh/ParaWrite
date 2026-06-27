@@ -33,6 +33,9 @@ export const ja = {
     error: 'エラーが発生しました',
     noResults: '結果がありません',
     uiLanguage: '表示言語',
+    rememberUiLanguage: '記憶',
+    rememberUiLanguageSaved: '表示言語をアカウントに保存しました',
+    rememberUiLanguageFailed: '表示言語の保存に失敗しました',
     selectWord: '単語をクリックして類義語と辞書を表示',
     panelHint:
       '訳文の単語をクリックするか、フレーズを選択して類義語・辞書・別の表現を表示します。',

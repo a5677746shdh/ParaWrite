@@ -8,8 +8,8 @@ ai-memory/
 .cursor/
 *.local
 .DS_Store
-config/parawrite.yaml
-config/parawrite.local.yaml
+config/config.yaml
+config/config.local.yaml
 config/data/
 .env
 .env.*

@@ -9,6 +9,7 @@ import { useTranslationStore } from './store'
 export default function App() {
   const setMeta = useTranslationStore((s) => s.setMeta)
   const setError = useTranslationStore((s) => s.setError)
+  const syncUserLocale = useTranslationStore((s) => s.syncUserLocale)
   const meta = useTranslationStore((s) => s.meta)
   const [authenticated, setAuthenticated] = useState(false)
 
@@ -20,6 +21,9 @@ export default function App() {
         setMeta(m)
         if (!m.authRequired || m.authenticated) {
           setAuthenticated(true)
+        }
+        if (m.userLogin?.authenticated) {
+          void syncUserLocale()
         }
       })
       .catch((err) => setError((err as Error).message))

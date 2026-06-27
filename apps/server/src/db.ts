@@ -8,12 +8,22 @@ import path from 'node:path'
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  password_hash TEXT NOT NULL,
-  nickname      TEXT,
-  note          TEXT,
-  created_at    INTEGER NOT NULL
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  username          TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash     TEXT NOT NULL,
+  nickname          TEXT,
+  note              TEXT,
+  email             TEXT,
+  phone             TEXT,
+  locale            TEXT,
+  user_key          TEXT NOT NULL UNIQUE,
+  config_id         TEXT NOT NULL UNIQUE,
+  glossary_id       TEXT NOT NULL UNIQUE,
+  updated_at        INTEGER,
+  last_login_at     INTEGER,
+  status            TEXT,
+  email_verified_at INTEGER,
+  created_at        INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS translation_history (

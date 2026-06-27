@@ -1,7 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import yaml from 'js-yaml'
-import { fromConfigLang } from './lang-codes.js'
 
 export interface GlossaryEntry {
   /** ISO 639-1 language code → term */
@@ -14,14 +13,7 @@ interface GlossaryFile {
   }>
 }
 
-export function loadGlossary(appRoot: string, fileName: string): GlossaryEntry[] {
-  const filePath = path.resolve(appRoot, fileName)
-  if (!fs.existsSync(filePath)) {
-    console.warn(`[parawrite] Glossary file not found: ${filePath}`)
-    return []
-  }
-
-  const raw = fs.readFileSync(filePath, 'utf-8')
+function parseGlossaryFile(raw: string): GlossaryEntry[] {
   const parsed = yaml.load(raw) as GlossaryFile
   const entries: GlossaryEntry[] = []
 
@@ -34,7 +26,7 @@ export function loadGlossary(appRoot: string, fileName: string): GlossaryEntry[]
     const translations: Record<string, string> = {}
     for (const [lang, term] of Object.entries(entry.translations)) {
       if (typeof term === 'string' && term.trim()) {
-        translations[fromConfigLang(lang)] = term.trim()
+        translations[lang.toLowerCase()] = term.trim()
       }
     }
 
@@ -46,15 +38,63 @@ export function loadGlossary(appRoot: string, fileName: string): GlossaryEntry[]
   return entries
 }
 
+export function loadGlossaryFromPath(filePath: string): GlossaryEntry[] {
+  if (!fs.existsSync(filePath)) {
+    return []
+  }
+  const raw = fs.readFileSync(filePath, 'utf-8')
+  return parseGlossaryFile(raw)
+}
+
+export function loadGlossary(appRoot: string, fileName: string): GlossaryEntry[] {
+  const filePath = path.resolve(appRoot, fileName)
+  if (!fs.existsSync(filePath)) {
+    console.warn(`[parawrite] Glossary file not found: ${filePath}`)
+    return []
+  }
+  const raw = fs.readFileSync(filePath, 'utf-8')
+  return parseGlossaryFile(raw)
+}
+
+export function loadUserGlossary(filePath: string): GlossaryEntry[] {
+  return loadGlossaryFromPath(filePath)
+}
+
+function entryConflictKeys(entry: GlossaryEntry): string[] {
+  return Object.entries(entry.translations).map(([lang, term]) => `${lang}:${term}`)
+}
+
+/** User entries override global entries that share any lang:term pair. */
+export function mergeGlossaryEntries(
+  base: GlossaryEntry[],
+  override: GlossaryEntry[]
+): GlossaryEntry[] {
+  if (override.length === 0) return base
+
+  const overrideKeys = new Set<string>()
+  for (const entry of override) {
+    for (const key of entryConflictKeys(entry)) {
+      overrideKeys.add(key)
+    }
+  }
+
+  const filtered = base.filter((entry) => {
+    const keys = entryConflictKeys(entry)
+    return !keys.some((key) => overrideKeys.has(key))
+  })
+
+  return [...filtered, ...override]
+}
+
 export function findRelevantEntries(
   entries: GlossaryEntry[],
   sourceText: string,
-  sourceLang6391: string
+  sourceLang: string
 ): GlossaryEntry[] {
   const matched: Array<{ entry: GlossaryEntry; termLength: number; matchedLang: string }> = []
 
   for (const entry of entries) {
-    if (sourceLang6391 === 'auto') {
+    if (sourceLang === 'auto') {
       for (const [lang, term] of Object.entries(entry.translations)) {
         if (term && sourceText.includes(term)) {
           matched.push({ entry, termLength: term.length, matchedLang: lang })
@@ -62,9 +102,9 @@ export function findRelevantEntries(
         }
       }
     } else {
-      const sourceTerm = entry.translations[sourceLang6391]
+      const sourceTerm = entry.translations[sourceLang]
       if (sourceTerm && sourceText.includes(sourceTerm)) {
-        matched.push({ entry, termLength: sourceTerm.length, matchedLang: sourceLang6391 })
+        matched.push({ entry, termLength: sourceTerm.length, matchedLang: sourceLang })
       }
     }
   }
@@ -76,9 +116,9 @@ export function findRelevantEntries(
 export function resolveSourceLangForGlossary(
   entries: GlossaryEntry[],
   sourceText: string,
-  sourceLang6391: string
+  sourceLang: string
 ): string | null {
-  if (sourceLang6391 !== 'auto') return sourceLang6391
+  if (sourceLang !== 'auto') return sourceLang
 
   let best: { lang: string; length: number } | null = null
   for (const entry of entries) {
@@ -95,15 +135,15 @@ export function resolveSourceLangForGlossary(
 
 export function buildGlossaryPromptSection(
   entries: GlossaryEntry[],
-  sourceLang6391: string,
-  targetLang6391: string
+  sourceLang: string,
+  targetLang: string
 ): string {
   if (entries.length === 0) return ''
 
   const lines = entries
     .map((entry) => {
-      const sourceTerm = entry.translations[sourceLang6391]
-      const targetTerm = entry.translations[targetLang6391]
+      const sourceTerm = entry.translations[sourceLang]
+      const targetTerm = entry.translations[targetLang]
       if (!sourceTerm || !targetTerm) return null
       return `- "${sourceTerm}" → "${targetTerm}"`
     })
@@ -124,27 +164,31 @@ export class GlossaryService {
     this.entries = entries
   }
 
+  getEntries(): GlossaryEntry[] {
+    return this.entries
+  }
+
   static fromConfig(appRoot: string, fileName?: string): GlossaryService {
     if (!fileName) return new GlossaryService([])
     return new GlossaryService(loadGlossary(appRoot, fileName))
   }
 
-  findRelevant(sourceText: string, sourceLang6391: string): GlossaryEntry[] {
-    return findRelevantEntries(this.entries, sourceText, sourceLang6391)
+  static fromEntries(entries: GlossaryEntry[]): GlossaryService {
+    return new GlossaryService(entries)
+  }
+
+  findRelevant(sourceText: string, sourceLang: string): GlossaryEntry[] {
+    return findRelevantEntries(this.entries, sourceText, sourceLang)
   }
 
   buildPromptSection(
     entries: GlossaryEntry[],
     sourceText: string,
-    sourceLang6391: string,
-    targetLang6391: string
+    sourceLang: string,
+    targetLang: string
   ): string {
-    const effectiveSourceLang = resolveSourceLangForGlossary(
-      entries,
-      sourceText,
-      sourceLang6391
-    )
+    const effectiveSourceLang = resolveSourceLangForGlossary(entries, sourceText, sourceLang)
     if (!effectiveSourceLang) return ''
-    return buildGlossaryPromptSection(entries, effectiveSourceLang, targetLang6391)
+    return buildGlossaryPromptSection(entries, effectiveSourceLang, targetLang)
   }
 }

@@ -1,6 +1,6 @@
 # ParaWrite 配置模板 / Configuration template
-# 复制为 parawrite.yaml 用于本地开发（parawrite.yaml 已被 git 忽略）
-# Copy to parawrite.yaml for local development (parawrite.yaml is gitignored)
+# 复制为 config.yaml 用于本地开发（config.yaml 已被 git 忽略）
+# Copy to config.yaml for local development (config.yaml is gitignored)
 #
 # 文件路径：相对路径均相对于项目根目录（config/ 的上一级）；绝对路径原样使用
 # File paths: relative paths resolve from the app root (parent of config/); absolute paths are used as-is
@@ -23,25 +23,26 @@ app:
   translate_on_enter: false         # true：Enter 翻译；false：Ctrl/Cmd+Enter 翻译
   alternatives_separator:           # 同义词/改写候选项之间的分隔符
     default: comma                  # comma | period
-    by_language:                    # 按 ISO 639-2 语言代码覆盖（如 zho、jpn）
-      zho: period
-      jpn: period
+    by_language:                    # 按 ISO 639-1 语言代码覆盖（如 zh、ja）
+      zh: period
+      ja: period
   phrase_word_threshold:            # 选中超过此词数视为短语（隐藏同义词/词典）
     default: 4
     by_language:
-      zho: 5
-      jpn: 5
+      zh: 5
+      ja: 5
   layout:                           # 响应式布局断点（像素）
     three_column_min_width: 1280    # ≥ 此宽度：翻译区 + 词语面板三列
     two_column_min_width: 768       # ≥ 此宽度：源/译文双列
     pane_width_ratios:              # 双栏/三栏下原文与译文栏宽度比例
       default: 0.5                  # 无匹配语言对时 50:50
-      by_pair:                      # 键为 ISO 639-2，如 zho-eng；值为前者作原文时的原文栏占比
-        zho-eng: 0.4                # 中→英：中文栏 40%；英→中：英文栏 60%（镜像，除非配置 eng-zho）
+      by_pair:                      # 键为 ISO 639-1，如 zh-en；值为前者作原文时的原文栏占比
+        zh-en: 0.4                  # 中→英：中文栏 40%；英→中：英文栏 60%（镜像，除非配置 en-zh）
   selection_copy_enabled: false     # true：多选词时复制按钮复制选中片段
   word_lookup_mode: adaptive        # immediate | manual | adaptive（区分：窄屏手动、三列立即）
   rephrase_hover_preview_enabled: false  # true：悬停备选表达后回译原文并高亮差异
   rephrase_hover_preview_delay_ms: 800     # 悬停多久后触发回译（毫秒）
+  auto_swap_languages: false            # true：检测到原文语言与目标语言相同时自动交换语言对
 
 # ---------------------------------------------------------------------------
 # LLM 服务商 / Providers
@@ -87,7 +88,7 @@ dictionary:
 # 自定义术语表 / Glossary（相对项目根目录）
 # ---------------------------------------------------------------------------
 glossary:
-  file: config/custom-dictionary.yaml
+  file: config/glossary.yaml
 
 # ---------------------------------------------------------------------------
 # PWA / Android TWA（Digital Asset Links）
@@ -121,6 +122,8 @@ users:
     dedup_interval_seconds: 60    # 去重时间窗口（秒）
     page_size: 5                  # 历史记录每页条数
   data_dir: data                  # SQLite 数据目录（相对项目根目录）；可用 PARWRITE_DATA_DIR 覆盖
+  # user_config_dir: data/user-configs    # 用户偏好 YAML 目录（相对项目根目录）
+  # user_glossary_dir: data/user-glossaries  # 用户独立词典 YAML 目录
 
 # ---------------------------------------------------------------------------
 # 服务端终端日志 / Server terminal logging（默认全部关闭）

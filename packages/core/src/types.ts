@@ -100,6 +100,10 @@ export interface UsersConfig {
   login?: UserLoginConfig
   history?: UserHistoryConfig
   data_dir?: string
+  /** Relative to app root; default `data/user-configs`. */
+  user_config_dir?: string
+  /** Relative to app root; default `data/user-glossaries`. */
+  user_glossary_dir?: string
 }
 
 export interface ThemeConfig {
@@ -131,7 +135,7 @@ export interface ThemeColors {
 export interface LayoutConfig {
   three_column_min_width?: number
   two_column_min_width?: number
-  /** Source/target pane width ratios by language pair (ISO 639-2 keys in config). */
+  /** Source/target pane width ratios by language pair (ISO 639-1 keys in config, e.g. zh-en). */
   pane_width_ratios?: PaneWidthRatiosConfig
 }
 
@@ -176,6 +180,8 @@ export interface AppConfig {
     rephrase_hover_preview_enabled?: boolean
     /** Milliseconds to wait before fetching back-translation on hover. */
     rephrase_hover_preview_delay_ms?: number
+    /** When true, swap languages automatically if source text matches target language. */
+    auto_swap_languages?: boolean
   }
   providers: Record<string, ProviderConfig>
   dictionary: DictionaryConfig
@@ -252,6 +258,7 @@ export interface PublicMeta {
   wordLookupMode: WordLookupMode
   rephraseHoverPreviewEnabled: boolean
   rephraseHoverPreviewDelayMs: number
+  autoSwapLanguages: boolean
   userLogin: PublicUserLoginMeta
   theme: ThemeColors
   historyConfig: PublicHistoryConfig
@@ -272,7 +279,28 @@ export interface UserProfile {
   username: string
   nickname: string | null
   note: string | null
+  email: string | null
+  phone: string | null
+  locale: string | null
+  configId: string
+  glossaryId: string
+  updatedAt: number | null
+  lastLoginAt: number | null
+  status: string | null
+  emailVerifiedAt: number | null
   createdAt: number
+}
+
+export interface UserMeProfile {
+  id: number
+  username: string
+  nickname: string | null
+  note: string | null
+  email: string | null
+  phone: string | null
+  locale: string | null
+  configId: string
+  glossaryId: string
 }
 
 export type LayoutMode = 'threeColumn' | 'twoColumn' | 'stacked'

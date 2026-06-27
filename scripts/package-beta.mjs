@@ -97,12 +97,12 @@ copyFile(
 )
 
 copyFile(
-  path.join(root, 'config/parawrite.example.yaml'),
-  path.join(outDir, 'config/parawrite.example.yaml')
+  path.join(root, 'config/config.example.yaml'),
+  path.join(outDir, 'config/config.example.yaml')
 )
 copyFile(
-  path.join(root, 'config/parawrite.docker.example.yaml'),
-  path.join(outDir, 'config/parawrite.docker.example.yaml')
+  path.join(root, 'config/config.docker.example.yaml'),
+  path.join(outDir, 'config/config.docker.example.yaml')
 )
 copyFile(
   path.join(root, 'config/manifest.example.json'),

@@ -33,6 +33,9 @@ export const zh = {
     error: '出错了',
     noResults: '无结果',
     uiLanguage: '界面语言',
+    rememberUiLanguage: '记住',
+    rememberUiLanguageSaved: '界面语言已保存到账户',
+    rememberUiLanguageFailed: '保存界面语言失败',
     selectWord: '点击单词查看同义词和词典释义',
     panelHint:
       '点击译文中的单词或拖选词组，查看同义词、词典释义和备选表达。',

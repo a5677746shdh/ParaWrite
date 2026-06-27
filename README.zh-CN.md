@@ -39,8 +39,8 @@ ParaWrite 是一款开源写作辅助工具，灵感来自 DeepL 的「替代译
 
 ```bash
 pnpm install
-cp config/parawrite.example.yaml config/parawrite.yaml
-export OPENAI_API_KEY=your-key-here   # 或在 parawrite.yaml 中配置
+cp config/config.example.yaml config/config.yaml
+export OPENAI_API_KEY=your-key-here   # 或在 config.yaml 中配置
 pnpm dev
 ```
 
