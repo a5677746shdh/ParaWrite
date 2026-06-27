@@ -29,6 +29,7 @@ app:
   word_lookup_mode: adaptive
   rephrase_hover_preview_enabled: false
   rephrase_hover_preview_delay_ms: 800
+  rephrase_back_translation_preload: off
 
 providers:
   DeepSeek:

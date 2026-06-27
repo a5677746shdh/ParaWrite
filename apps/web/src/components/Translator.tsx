@@ -15,8 +15,11 @@ import {
   splitAlternatives,
   countWordsInRange,
   type AlternativesSeparator,
+  type DictionaryEntry,
   type LayoutMode,
+  type RephraseOption,
   type SelectionGranularity,
+  type SynonymOption,
 } from '@parawrite/core/client'
 import {
   fetchDictionaryContext,
@@ -27,13 +30,21 @@ import {
 } from '../api'
 import { copyWithExecCommand, canUseClipboardApi, pasteFromClipboard } from '../clipboard'
 import { resolveUiLang } from '../i18n/languages'
+import { translateGuards } from '../lib/translate-guards'
+import {
+  getWordPanelCache,
+  setWordPanelCache,
+  wordPanelCacheKey,
+  clearWordPanelCache,
+} from '../lib/word-panel-cache'
 import { useAutoResizeTextarea } from '../hooks/useAutoResizeTextarea'
 import { useTranslationStore } from '../store'
 import { TextStats } from './TextStats'
+import { PaneFooter, PANE_FOOTER_MIN_WIDTH, TARGET_PANE_MIN_WIDTH } from './PaneFooter'
 import { TokenEditor } from './TokenEditor'
 import { WordPanel } from './WordPanel'
 import { HistoryPanel } from './HistoryPanel'
-import { textButtonPx, paneIconButtonClass, paneClearIconClass, paneEditorTextClass, panePlaceholderFieldClass, speakActiveButtonClass, wordSelectionCancelButtonClass } from '../ui'
+import { textButtonPx, paneIconButtonClass, paneClearIconClass, paneEditorTextClass, panePlaceholderFieldClass, speakActiveButtonClass, wordSelectionCancelButtonClass, paneOutlineAccentButtonClass } from '../ui'
 
 /** Responsive breakpoints from meta.layout or defaults; drives three-column / modal / sheet word panel. */
 const DEFAULT_BREAKPOINTS = {
@@ -194,26 +205,22 @@ export function Translator() {
   }, [layoutMode, selectedWord])
 
   useEffect(() => {
-    if (sourceLang !== 'auto') return
+    const needsDetection = sourceLang === 'auto' || meta?.autoSwapLanguages
+    if (!needsDetection) return
 
     if (!sourceText.trim()) {
-      setDetectedSourceLang(null)
+      if (sourceLang === 'auto') setDetectedSourceLang(null)
       return
     }
 
     const timer = setTimeout(() => {
-      setDetectedSourceLang(detectTextLanguage(sourceText))
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [sourceText, sourceLang, setDetectedSourceLang])
-
-  useEffect(() => {
-    if (!meta?.autoSwapLanguages || !sourceText.trim()) return
-
-    const timer = setTimeout(() => {
       const detected = detectTextLanguage(sourceText)
-      if (!detected || detected !== targetLang) return
+
+      if (sourceLang === 'auto') {
+        setDetectedSourceLang(detected)
+      }
+
+      if (!meta?.autoSwapLanguages || !detected || detected !== targetLang) return
       if (sourceLang !== 'auto' && sourceLang === targetLang) return
 
       let partnerLang: string
@@ -242,6 +249,7 @@ export function Translator() {
     meta?.autoSwapLanguages,
     userLocale,
     i18n.language,
+    setDetectedSourceLang,
     autoSwapLanguages,
   ])
 
@@ -265,6 +273,7 @@ export function Translator() {
     setStreaming(true)
     setError(null)
     setTargetText('')
+    clearWordPanelCache()
     setSelection(null, null)
     setRephraseOptions([])
 
@@ -347,6 +356,11 @@ export function Translator() {
     if (prevTargetLangRef.current === targetLang) return
     prevTargetLangRef.current = targetLang
 
+    if (translateGuards.skipTargetLangRetranslate) {
+      translateGuards.skipTargetLangRetranslate = false
+      return
+    }
+
     const { targetText: currentTarget, sourceText: currentSource, provider: p, model: m } =
       useTranslationStore.getState()
     if (!currentTarget.trim() || !currentSource.trim() || !p || !m) return
@@ -387,6 +401,11 @@ export function Translator() {
 
     const sourceChanged = prevSourceForAutoRef.current !== sourceText
     prevSourceForAutoRef.current = sourceText
+
+    if (translateGuards.syncedSourceForAuto === sourceText) {
+      translateGuards.syncedSourceForAuto = null
+      return
+    }
 
     if (!sourceChanged) {
       return
@@ -466,6 +485,26 @@ export function Translator() {
       targetLang,
       granularity
     )
+
+    const cacheKey = wordPanelCacheKey({
+      word,
+      range,
+      rephraseTarget,
+      targetText,
+      sourceLang,
+      targetLang,
+      provider,
+      model,
+    })
+    const cachedPanel = getWordPanelCache(cacheKey)
+    if (cachedPanel) {
+      setRephraseOptions(cachedPanel.rephraseOptions, cachedPanel.rephraseOriginalSentence)
+      setSynonyms(cachedPanel.synonyms)
+      setDictionary(cachedPanel.dictionary)
+      setPanelLoading(false)
+      return
+    }
+
     setRephraseOptions([], rephraseTarget)
     const uiLang = resolveUiLang(i18n.language)
     const wordCount = countWordsInRange(targetSegments, range)
@@ -485,6 +524,10 @@ export function Translator() {
 
     const isStale = () => signal.aborted
 
+    let resolvedSynonyms: SynonymOption[] = []
+    let resolvedDictionary: DictionaryEntry | null = null
+    let resolvedRephrase: RephraseOption[] = []
+
     try {
       const rephrasePromise = fetchRephrase(
         {
@@ -502,17 +545,18 @@ export function Translator() {
                 resolveAlternativesSeparator()
               )
             : rephrase.map((r) => r.text.trim()).filter(Boolean)
-        setRephraseOptions(
-          [...new Set(rephraseTexts)].map((text) => ({ text })),
-          rephraseTarget
-        )
+        resolvedRephrase = [...new Set(rephraseTexts)].map((text) => ({ text }))
+        setRephraseOptions(resolvedRephrase, rephraseTarget)
       })
 
       const extrasPromise = isPhrase
         ? Promise.resolve()
         : Promise.allSettled([
             fetchSynonyms({ word, sentence, ...sharedParams }, signal).then((syns) => {
-              if (!isStale()) setSynonyms(syns)
+              if (!isStale()) {
+                resolvedSynonyms = syns
+                setSynonyms(syns)
+              }
             }),
             fetchDictionaryContext(
               {
@@ -523,11 +567,23 @@ export function Translator() {
               },
               signal
             ).then((dict) => {
-              if (!isStale()) setDictionary(dict)
+              if (!isStale()) {
+                resolvedDictionary = dict
+                setDictionary(dict)
+              }
             }),
           ])
 
       await Promise.allSettled([rephrasePromise, extrasPromise])
+
+      if (!isStale()) {
+        setWordPanelCache(cacheKey, {
+          synonyms: resolvedSynonyms,
+          dictionary: resolvedDictionary,
+          rephraseOptions: resolvedRephrase,
+          rephraseOriginalSentence: rephraseTarget,
+        })
+      }
     } catch (err) {
       if (!isStale() && (err as Error).name !== 'AbortError') {
         setError((err as Error).message)
@@ -631,7 +687,63 @@ export function Translator() {
     setPanelLoading(false)
   }, [isManualLookup])
 
-  const clearSelection = () => {
+  const applySynonym = useCallback(
+    (replacement: string) => {
+      if (!selectedRange) return
+      const newText = replaceTokenRange(
+        targetText,
+        targetSegments,
+        selectedRange.start,
+        selectedRange.end,
+        replacement
+      )
+      setTargetText(newText)
+      setSynonyms([])
+      setSelection(null, null)
+    },
+    [selectedRange, targetText, targetSegments, setTargetText, setSynonyms, setSelection]
+  )
+
+  const applyRephrase = useCallback(
+    (text: string) => {
+      if (!selectedWord) return
+      if (selectedRange) {
+        const newText = replaceTokenRange(
+          targetText,
+          targetSegments,
+          selectedRange.start,
+          selectedRange.end,
+          text
+        )
+        setTargetText(newText)
+      } else {
+        const granularity = selectionGranularity ?? 'word'
+        const replaceTarget = resolveRephraseTarget(
+          selectedWord,
+          targetText,
+          targetLang,
+          granularity
+        )
+        const newText = targetText.replace(replaceTarget, text)
+        if (newText !== targetText) setTargetText(newText)
+      }
+      setRephraseOptions([])
+      setSelection(null, null)
+    },
+    [
+      selectedWord,
+      selectedRange,
+      targetText,
+      targetSegments,
+      selectionGranularity,
+      targetLang,
+      setTargetText,
+      setRephraseOptions,
+      setSelection,
+    ]
+  )
+
+  const clearSelection = useCallback(() => {
     cancelScheduledWordFetch()
     abortPanelFetch()
     setWordPanelRequested(false)
@@ -640,47 +752,15 @@ export function Translator() {
     setDictionary(null)
     setRephraseOptions([])
     setPanelLoading(false)
-  }
-
-  const applySynonym = (replacement: string) => {
-    if (!selectedRange) return
-    const newText = replaceTokenRange(
-      targetText,
-      targetSegments,
-      selectedRange.start,
-      selectedRange.end,
-      replacement
-    )
-    setTargetText(newText)
-    setSynonyms([])
-    setSelection(null, null)
-  }
-
-  const applyRephrase = (text: string) => {
-    if (!selectedWord) return
-    if (selectedRange) {
-      const newText = replaceTokenRange(
-        targetText,
-        targetSegments,
-        selectedRange.start,
-        selectedRange.end,
-        text
-      )
-      setTargetText(newText)
-    } else {
-      const granularity = selectionGranularity ?? 'word'
-      const replaceTarget = resolveRephraseTarget(
-        selectedWord,
-        targetText,
-        targetLang,
-        granularity
-      )
-      const newText = targetText.replace(replaceTarget, text)
-      if (newText !== targetText) setTargetText(newText)
-    }
-    setRephraseOptions([])
-    setSelection(null, null)
-  }
+  }, [
+    cancelScheduledWordFetch,
+    abortPanelFetch,
+    setSelection,
+    setSynonyms,
+    setDictionary,
+    setRephraseOptions,
+    setPanelLoading,
+  ])
 
   const copyText = () => {
     const textToCopy = canCopySelection ? selectedText : targetText
@@ -749,7 +829,7 @@ export function Translator() {
     const sourcePct = Math.round(sourceRatio * 1000) / 10
     const targetPct = Math.round(targetRatio * 1000) / 10
     return {
-      gridTemplateColumns: `minmax(0, ${sourcePct}%) 1px minmax(0, ${targetPct}%)`,
+      gridTemplateColumns: `minmax(${PANE_FOOTER_MIN_WIDTH}, ${sourcePct}fr) 1px minmax(${TARGET_PANE_MIN_WIDTH}, ${targetPct}fr)`,
     }
   }, [isStacked, sourceRatio, targetRatio])
 
@@ -782,14 +862,21 @@ export function Translator() {
     })
   }
 
-  const paneClass = clsx('relative flex w-full min-w-0 flex-col p-4')
+  const sourcePaneClass = clsx(
+    'relative flex w-full min-w-0 flex-col p-4',
+    !isStacked && 'min-w-[12.5rem]'
+  )
+  const targetPaneClass = clsx(
+    'relative flex w-full min-w-0 flex-col p-4',
+    !isStacked && 'min-w-[16rem]'
+  )
   const paneContentClass = clsx('w-full', !isStacked && 'min-h-[6rem]')
-  const paneFooterClass = 'mt-auto shrink-0 flex w-full items-center justify-between gap-3 pt-3'
+  const showLookupButton = isManualLookup && !!selectedWord
 
   const sourcePane = (
     <section
       className={clsx(
-        paneClass,
+        sourcePaneClass,
         isStacked && 'border-b border-deepl-border'
       )}
     >
@@ -807,62 +894,67 @@ export function Translator() {
           )}
         />
       </div>
-      <div className={paneFooterClass}>
-        <TextStats text={sourceText} lang={sourceLang} />
-        <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            onClick={handleSourcePaneAction}
-            title={isSourceEmpty ? t('paste') : t('clear')}
-            aria-label={isSourceEmpty ? t('paste') : t('clear')}
-            className={clsx(paneIconButtonClass, !isSourceEmpty && paneClearIconClass)}
-          >
-            {isSourceEmpty ? (
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <rect x="9" y="2" width="6" height="4" rx="1" />
-                <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
-              </svg>
-            ) : (
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 1024 1024"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path
-                  d="M448 256h128V128H448v128z m192-128v128h192a64 64 0 0 1 64 64v128a64 64 0 0 1-54.976 63.36l44.544 311.616a64 64 0 0 1-63.36 73.024H201.792a64 64 0 0 1-63.36-73.024L183.04 511.36A64 64 0 0 1 128 448V320a64 64 0 0 1 64-64h192V128a64 64 0 0 1 64-64h128a64 64 0 0 1 64 64z m136.512 320H832V320H192v128h584.512z m0 64H247.488l-45.696 320H320v-128h64v128h96v-128h64v128H640v-128h64v128h118.208l-45.696-320z"
-                  fill="currentColor"
-                />
-              </svg>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={handleTranslate}
-            disabled={isTranslating || !sourceText.trim()}
-            className={clsx('rounded-lg bg-deepl-accent py-1.5 text-sm font-medium text-white hover:bg-deepl-accent/90 disabled:opacity-50', textButtonPx)}
-          >
-            {isTranslating ? t('translating') : t('translate')}
-          </button>
-        </div>
-      </div>
+      <PaneFooter
+        stats={<TextStats text={sourceText} lang={sourceLang} />}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={handleSourcePaneAction}
+              title={isSourceEmpty ? t('paste') : t('clear')}
+              aria-label={isSourceEmpty ? t('paste') : t('clear')}
+              className={clsx(paneIconButtonClass, !isSourceEmpty && paneClearIconClass)}
+            >
+              {isSourceEmpty ? (
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="9" y="2" width="6" height="4" rx="1" />
+                  <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
+                </svg>
+              ) : (
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 1024 1024"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M448 256h128V128H448v128z m192-128v128h192a64 64 0 0 1 64 64v128a64 64 0 0 1-54.976 63.36l44.544 311.616a64 64 0 0 1-63.36 73.024H201.792a64 64 0 0 1-63.36-73.024L183.04 511.36A64 64 0 0 1 128 448V320a64 64 0 0 1 64-64h192V128a64 64 0 0 1 64-64h128a64 64 0 0 1 64 64z m136.512 320H832V320H192v128h584.512z m0 64H247.488l-45.696 320H320v-128h64v128h96v-128h64v128H640v-128h64v128h118.208l-45.696-320z"
+                    fill="currentColor"
+                  />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleTranslate}
+              disabled={isTranslating || !sourceText.trim()}
+              className={clsx(
+                'rounded-lg bg-deepl-accent py-1.5 text-sm font-medium text-white hover:bg-deepl-accent/90 disabled:opacity-50',
+                textButtonPx
+              )}
+            >
+              {isTranslating ? t('translating') : t('translate')}
+            </button>
+          </>
+        }
+      />
     </section>
   )
 
   const targetPane = (
-    <section className={paneClass}>
+    <section className={targetPaneClass}>
       <div className={paneContentClass}>
         <TokenEditor
           text={targetText}
@@ -878,16 +970,24 @@ export function Translator() {
           placeholder={t('targetPlaceholder')}
         />
       </div>
-      <div className={paneFooterClass}>
-        <TextStats
-          text={targetText}
-          lang={targetLang}
-          showLookupButton={isManualLookup && !!selectedWord}
-          onLookup={handleManualLookup}
-          lookupDisabled={isPanelLoading}
-        />
-        <div className="flex shrink-0 gap-2">
-          {selectedWordCount >= 2 && (
+      <PaneFooter
+        variant="target"
+        stats={<TextStats text={targetText} lang={targetLang} />}
+        leading={
+          showLookupButton ? (
+            <button
+              type="button"
+              onClick={handleManualLookup}
+              disabled={isPanelLoading}
+              className={clsx(paneOutlineAccentButtonClass, textButtonPx)}
+            >
+              {t('lookupWord')}
+            </button>
+          ) : undefined
+        }
+        actions={
+          <>
+            {selectedWordCount >= 2 && (
             <button
               type="button"
               onClick={clearSelection}
@@ -978,8 +1078,9 @@ export function Translator() {
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
             </svg>
           </button>
-        </div>
-      </div>
+          </>
+        }
+      />
     </section>
   )
 
@@ -998,24 +1099,47 @@ export function Translator() {
     </div>
   )
 
-  const wordPanelProps = {
-    selectedWord,
-    synonyms,
-    dictionary,
-    rephraseOptions,
-    rephraseOriginalSentence,
-    sourceLang: effectiveSourceLang ?? sourceLang,
-    targetLang,
-    provider,
-    model,
-    rephraseHoverPreviewEnabled: meta?.rephraseHoverPreviewEnabled ?? false,
-    rephraseHoverPreviewDelayMs: meta?.rephraseHoverPreviewDelayMs ?? 800,
-    isPhraseSelection,
-    isLoading: isPanelLoading,
-    onApplySynonym: applySynonym,
-    onApplyRephrase: applyRephrase,
-    onClose: clearSelection,
-  }
+  const wordPanelProps = useMemo(
+    () => ({
+      selectedWord,
+      synonyms,
+      dictionary,
+      rephraseOptions,
+      rephraseOriginalSentence,
+      sourceLang: effectiveSourceLang ?? sourceLang,
+      targetLang,
+      provider,
+      model,
+      rephraseHoverPreviewEnabled: meta?.rephraseHoverPreviewEnabled ?? false,
+      rephraseHoverPreviewDelayMs: meta?.rephraseHoverPreviewDelayMs ?? 800,
+      rephraseBackTranslationPreload: meta?.rephraseBackTranslationPreload ?? 'off',
+      isPhraseSelection,
+      isLoading: isPanelLoading,
+      onApplySynonym: applySynonym,
+      onApplyRephrase: applyRephrase,
+      onClose: clearSelection,
+    }),
+    [
+      selectedWord,
+      synonyms,
+      dictionary,
+      rephraseOptions,
+      rephraseOriginalSentence,
+      effectiveSourceLang,
+      sourceLang,
+      targetLang,
+      provider,
+      model,
+      meta?.rephraseHoverPreviewEnabled,
+      meta?.rephraseHoverPreviewDelayMs,
+      meta?.rephraseBackTranslationPreload,
+      isPhraseSelection,
+      isPanelLoading,
+      applySynonym,
+      applyRephrase,
+      clearSelection,
+    ]
+  )
 
   return (
     <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">

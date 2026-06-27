@@ -38,10 +38,10 @@ const tabButtonClass = (active: boolean) =>
 
 function HistoryAddFavoriteButton({
   onAdded,
-  onMessage,
+  locked,
 }: {
   onAdded: () => void
-  onMessage: (message: string | null) => void
+  locked: boolean
 }) {
   const { t } = useTranslation()
   const { sourceText, targetText, sourceLang, targetLang } = useTranslationStore(
@@ -54,7 +54,7 @@ function HistoryAddFavoriteButton({
   )
 
   const handleAddFavorite = async () => {
-    if (!sourceText.trim() || !targetText.trim()) return
+    if (locked || !sourceText.trim() || !targetText.trim()) return
     try {
       await addHistoryFavorite({
         sourceText,
@@ -62,24 +62,29 @@ function HistoryAddFavoriteButton({
         sourceLang,
         targetLang,
       })
-      onMessage(t('historyFavoriteAdded'))
-      setTimeout(() => onMessage(null), 2000)
       onAdded()
     } catch {
       // ignore
     }
   }
 
+  const canAdd = sourceText.trim() && targetText.trim() && !locked
+
   return (
     <button
       type="button"
       onClick={() => void handleAddFavorite()}
-      disabled={!sourceText.trim() || !targetText.trim()}
-      title={t('historyAddFavorite')}
-      aria-label={t('historyAddFavorite')}
-      className="flex h-10 w-10 items-center justify-center rounded-lg border border-deepl-border text-deepl-blue hover:bg-deepl-light disabled:opacity-50"
+      disabled={!canAdd}
+      title={locked ? t('historyFavoriteAdded') : t('historyAddFavorite')}
+      aria-label={locked ? t('historyFavoriteAdded') : t('historyAddFavorite')}
+      className={clsx(
+        'flex h-10 w-10 items-center justify-center rounded-lg border border-deepl-border disabled:opacity-50',
+        locked
+          ? 'cursor-not-allowed text-deepl-muted'
+          : 'text-deepl-blue hover:bg-deepl-light'
+      )}
     >
-      <FavoriteIcon filled={false} />
+      <FavoriteIcon filled={locked} />
     </button>
   )
 }
@@ -89,6 +94,12 @@ export function HistoryPanel() {
   const meta = useTranslationStore((s) => s.meta)
   const refreshMeta = useTranslationStore((s) => s.refreshMeta)
   const historyRefreshKey = useTranslationStore((s) => s.historyRefreshKey)
+  const { sourceText, targetText } = useTranslationStore(
+    useShallow((s) => ({
+      sourceText: s.sourceText,
+      targetText: s.targetText,
+    }))
+  )
 
   const [authOpen, setAuthOpen] = useState(false)
   const [filter, setFilter] = useState<'all' | 'favorites'>('favorites')
@@ -96,8 +107,22 @@ export function HistoryPanel() {
   const [entries, setEntries] = useState<TranslationHistoryEntry[]>([])
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [favoriteMessage, setFavoriteMessage] = useState<string | null>(null)
+  const [pinnedFavorite, setPinnedFavorite] = useState<{ source: string; target: string } | null>(
+    null
+  )
   const [pageInput, setPageInput] = useState('1')
+
+  const isCurrentFavorited =
+    pinnedFavorite !== null &&
+    sourceText === pinnedFavorite.source &&
+    targetText === pinnedFavorite.target
+
+  useEffect(() => {
+    if (!pinnedFavorite) return
+    if (sourceText !== pinnedFavorite.source || targetText !== pinnedFavorite.target) {
+      setPinnedFavorite(null)
+    }
+  }, [sourceText, targetText, pinnedFavorite])
 
   const userLogin = meta?.userLogin
   const enabled = userLogin?.enabled ?? false
@@ -146,11 +171,12 @@ export function HistoryPanel() {
   }
 
   const handleFavoriteAdded = useCallback(async () => {
+    setPinnedFavorite({ source: sourceText, target: targetText })
     setPage(1)
     const result = await fetchHistory(filter, 1, pageSize)
     setEntries(result.entries)
     setTotalPages(result.totalPages)
-  }, [filter, pageSize])
+  }, [filter, pageSize, sourceText, targetText])
 
   const handleToggleFavorite = async (id: number) => {
     try {
@@ -224,14 +250,16 @@ export function HistoryPanel() {
                   </button>
                 </div>
                 <HistoryAddFavoriteButton
+                  locked={isCurrentFavorited}
                   onAdded={() => void handleFavoriteAdded()}
-                  onMessage={setFavoriteMessage}
                 />
               </div>
             </div>
           )}
-          {favoriteMessage && (
-            <p className="mt-2 text-xs text-deepl-success">{favoriteMessage}</p>
+          {isCurrentFavorited && (
+            <p className="mt-2 text-right text-xs text-deepl-success">
+              {t('historyFavoriteAdded')}
+            </p>
           )}
         </div>
 

@@ -42,6 +42,7 @@ app:
   word_lookup_mode: adaptive        # immediate | manual | adaptive（区分：窄屏手动、三列立即）
   rephrase_hover_preview_enabled: false  # true：悬停备选表达后回译原文并高亮差异
   rephrase_hover_preview_delay_ms: 800     # 悬停多久后触发回译（毫秒）
+  rephrase_back_translation_preload: off   # off | partial | all — 回译预加载：关闭 / 悬停时 / 查词完成后全部
   auto_swap_languages: false            # true：检测到原文语言与目标语言相同时自动交换语言对
 
 # ---------------------------------------------------------------------------

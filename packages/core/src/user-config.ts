@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import yaml from 'js-yaml'
 import type { AppConfig, ThemeConfig } from './types.js'
-import { resolveAppPath, resolveDataDir } from './config.js'
+import { resolveAppPath } from './config.js'
 
 export interface UserPreferencesConfig {
   app?: Partial<AppConfig['app']>
@@ -178,9 +178,4 @@ export function resolveUserGlossaryPath(
 ): string {
   const dir = resolveUserGlossaryDir(config, configPath)
   return path.join(dir, `${glossaryId}.yaml`)
-}
-
-/** Resolve user data directory (same as SQLite data dir). */
-export function resolveUserDataDir(config: AppConfig, configPath?: string): string {
-  return resolveDataDir(config, configPath)
 }

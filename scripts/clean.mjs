@@ -16,6 +16,7 @@ const emptyDirs = [
   'packages/core/src/users',
   'apps/server/src/db',
   'apps/server/src/routes',
+  'ai-memory',
 ]
 
 for (const rel of distPaths) {

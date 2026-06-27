@@ -62,11 +62,17 @@ export class DictionaryService {
     targetLang: string,
     uiLang: string,
     provider: string,
-    model?: string
+    model?: string,
+    signal?: AbortSignal
   ): Promise<DictionaryEntry | null> {
     const definitionLang = uiLang === 'zh' ? 'zh' : uiLang === 'en' ? 'en' : uiLang
     const bilingual = definitionLang !== targetLang
     const cacheKey = `${targetLang}:${definitionLang}:${word.toLowerCase()}`
+
+    const cachedContext = cache.get(cacheKey)
+    if (cachedContext && cachedContext.meanings.length > 0) {
+      return cachedContext
+    }
 
     if (!bilingual) {
       const cached = await this.lookup(targetLang, word)
@@ -96,6 +102,7 @@ export class DictionaryService {
       model: resolvedModel,
       messages: buildMessages(prompt.system, prompt.user),
       temperature: 0.2,
+      signal,
     })
 
     const parsed = parseJsonResponse<{

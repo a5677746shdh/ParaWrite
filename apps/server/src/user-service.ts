@@ -65,7 +65,11 @@ function generateUserKey(): string {
 }
 
 export class UserService {
-  constructor(private readonly db: AppDatabase) {}
+  private readonly stmtGetById
+
+  constructor(private readonly db: AppDatabase) {
+    this.stmtGetById = this.db.prepare('SELECT * FROM users WHERE id = ?')
+  }
 
   async register(
     username: string,
@@ -135,17 +139,8 @@ export class UserService {
   }
 
   getById(id: number): UserProfile | null {
-    const row = this.db.prepare('SELECT * FROM users WHERE id = ?').get(id) as
-      | UserRow
-      | undefined
+    const row = this.stmtGetById.get(id) as UserRow | undefined
     return row ? rowToProfile(row) : null
-  }
-
-  getUserKeyById(id: number): string | null {
-    const row = this.db
-      .prepare('SELECT user_key FROM users WHERE id = ?')
-      .get(id) as { user_key: string } | undefined
-    return row?.user_key ?? null
   }
 
   isUsernameAllowed(username: string, allowedUsernames: string[]): boolean {

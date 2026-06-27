@@ -4,6 +4,25 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-06-27
+
+### Added
+- Rephrase back-translation preload: `rephrase_back_translation_preload` (`off` | `partial` | `all`)
+- Target pane footer layout: lookup button left, stats centered when lookup is visible; responsive narrow/wide breakpoints
+- Client-side word-panel result cache for repeat lookups on the same selection
+- `/api/meta` includes user `locale` to skip an extra `/api/user/me` on startup when logged in
+
+### Changed
+- Favorite “added” hint stays right-aligned until source or target text changes; favorite button disabled while pinned
+- Back-translation prefetch capped at 3 concurrent requests in preload modes
+- Language auto-detect and auto-swap share one debounced detection pass
+- Backend caches merged user config/glossary with mtime TTL; history queries use prepared statements
+- Dictionary bilingual LLM results are cached and respect request abort
+
+### Fixed
+- Auto language swap no longer triggers duplicate re-translation after swap
+- History dedup index includes `target_text`
+
 ## [0.8.0] — 2026-06-27
 
 ### Added

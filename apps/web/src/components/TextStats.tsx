@@ -10,6 +10,7 @@ interface TextStatsProps {
   showLookupButton?: boolean
   onLookup?: () => void
   lookupDisabled?: boolean
+  className?: string
 }
 
 export const TextStats = memo(function TextStats({
@@ -18,6 +19,7 @@ export const TextStats = memo(function TextStats({
   showLookupButton = false,
   onLookup,
   lookupDisabled = false,
+  className,
 }: TextStatsProps) {
   const { t } = useTranslation()
   const stats = useMemo(
@@ -42,8 +44,8 @@ export const TextStats = memo(function TextStats({
   }
 
   return (
-    <p className="text-xs text-deepl-blue/50">
+    <span className={clsx('text-xs text-deepl-blue/50', className)}>
       {t('textStats', { chars: stats.chars, words: stats.words })}
-    </p>
+    </span>
   )
 })

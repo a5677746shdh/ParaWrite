@@ -158,6 +158,9 @@ export interface PaneWidthRatioResult {
 /** `immediate` = lookup on select; `manual` = lookup button; `adaptive` = manual in 1–2 column, immediate in 3 column. */
 export type WordLookupMode = 'immediate' | 'manual' | 'adaptive'
 
+/** Preload back-translations for rephrase alternatives: off, on hover, or when panel loads. */
+export type RephraseBackTranslationPreload = 'off' | 'partial' | 'all'
+
 export interface AppConfig {
   server: {
     host: string
@@ -180,6 +183,8 @@ export interface AppConfig {
     rephrase_hover_preview_enabled?: boolean
     /** Milliseconds to wait before fetching back-translation on hover. */
     rephrase_hover_preview_delay_ms?: number
+    /** Preload back-translations: `off`, `partial` (on hover), or `all` (when alternatives load). */
+    rephrase_back_translation_preload?: RephraseBackTranslationPreload
     /** When true, swap languages automatically if source text matches target language. */
     auto_swap_languages?: boolean
   }
@@ -203,6 +208,7 @@ export interface PublicUserSummary {
   id: number
   username: string
   nickname: string | null
+  locale: string | null
 }
 
 export interface PublicUserLoginMeta {
@@ -258,6 +264,7 @@ export interface PublicMeta {
   wordLookupMode: WordLookupMode
   rephraseHoverPreviewEnabled: boolean
   rephraseHoverPreviewDelayMs: number
+  rephraseBackTranslationPreload: RephraseBackTranslationPreload
   autoSwapLanguages: boolean
   userLogin: PublicUserLoginMeta
   theme: ThemeColors

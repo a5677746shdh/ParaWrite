@@ -73,9 +73,27 @@ When enabled, hovering an alternative in the word panel (after a delay) back-tra
 app:
   rephrase_hover_preview_enabled: false
   rephrase_hover_preview_delay_ms: 800
+  rephrase_back_translation_preload: off   # off | partial | all
 ```
 
 Requires a resolved source language (not `auto` without detection). Each hover triggers one translation API call; the baseline for the current phrase is fetched once per selection.
+
+### Rephrase back-translation preload
+
+Preload back-translations before the user opens a preview, so hover and batch back-translate feel instant when data is ready.
+
+| Value | Behavior |
+|-------|----------|
+| `off` | Default. Fetch on hover (after delay) or when expanding batch back-translate. |
+| `partial` | Start fetching as soon as the pointer enters an alternative; show after the hover delay or when expanding batch. |
+| `all` | After alternatives finish loading in the word panel, fetch back-translations for every option; show after the hover delay (cached results appear without extra wait). |
+
+```yaml
+app:
+  rephrase_back_translation_preload: off   # off | partial | all
+```
+
+Works with `rephrase_hover_preview_enabled` for per-option hover display and the batch back-translate button. In `all` mode, the batch button uses the same cache without extra API calls.
 
 ## Providers
 

@@ -33,11 +33,85 @@ export interface SaveHistoryInput {
 }
 
 export class HistoryService {
+  private readonly stmtListAll
+  private readonly stmtListFavorites
+  private readonly stmtCountAll
+  private readonly stmtCountFavorites
+  private readonly stmtUpdateDedup
+  private readonly stmtSelectById
+  private readonly stmtInsert
+  private readonly stmtFindMatching
+  private readonly stmtPromoteFavorite
+  private readonly stmtUpdateFavoriteDedup
+  private readonly stmtToggleFavorite
+  private readonly stmtDelete
+  private readonly stmtGetLatestNonFavorite
+
   constructor(
     private readonly db: AppDatabase,
     private readonly similarityThreshold: number,
     private readonly dedupIntervalSeconds: number
-  ) {}
+  ) {
+    this.stmtListAll = db.prepare(
+      `SELECT * FROM translation_history
+       WHERE user_id = ?
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+    this.stmtListFavorites = db.prepare(
+      `SELECT * FROM translation_history
+       WHERE user_id = ? AND is_favorite = 1
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+    this.stmtCountAll = db.prepare(
+      `SELECT COUNT(*) as count FROM translation_history WHERE user_id = ?`
+    )
+    this.stmtCountFavorites = db.prepare(
+      `SELECT COUNT(*) as count FROM translation_history
+       WHERE user_id = ? AND is_favorite = 1`
+    )
+    this.stmtUpdateDedup = db.prepare(
+      `UPDATE translation_history
+       SET source_text = ?, target_text = ?, source_lang = ?, target_lang = ?, created_at = ?
+       WHERE id = ? AND user_id = ?`
+    )
+    this.stmtSelectById = db.prepare('SELECT * FROM translation_history WHERE id = ?')
+    this.stmtInsert = db.prepare(
+      `INSERT INTO translation_history
+       (user_id, source_text, target_text, source_lang, target_lang, is_favorite, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    this.stmtFindMatching = db.prepare(
+      `SELECT * FROM translation_history
+       WHERE user_id = ?
+         AND source_text = ?
+         AND target_text = ?
+         AND source_lang = ?
+         AND target_lang = ?
+       ORDER BY is_favorite ASC, created_at DESC
+       LIMIT 1`
+    )
+    this.stmtPromoteFavorite = db.prepare(
+      `UPDATE translation_history SET is_favorite = 1, created_at = ? WHERE id = ? AND user_id = ?`
+    )
+    this.stmtUpdateFavoriteDedup = db.prepare(
+      `UPDATE translation_history
+       SET source_text = ?, target_text = ?, source_lang = ?, target_lang = ?,
+           is_favorite = 1, created_at = ?
+       WHERE id = ? AND user_id = ?`
+    )
+    this.stmtToggleFavorite = db.prepare(
+      'UPDATE translation_history SET is_favorite = ? WHERE id = ? AND user_id = ?'
+    )
+    this.stmtDelete = db.prepare('DELETE FROM translation_history WHERE id = ? AND user_id = ?')
+    this.stmtGetLatestNonFavorite = db.prepare(
+      `SELECT * FROM translation_history
+       WHERE user_id = ? AND is_favorite = 0
+       ORDER BY created_at DESC
+       LIMIT 1`
+    )
+  }
 
   list(
     userId: number,
@@ -45,27 +119,17 @@ export class HistoryService {
     limit = 50,
     offset = 0
   ): TranslationHistoryEntry[] {
-    const favoriteClause = filter === 'favorites' ? 'AND is_favorite = 1' : ''
-    const rows = this.db
-      .prepare(
-        `SELECT * FROM translation_history
-         WHERE user_id = ? ${favoriteClause}
-         ORDER BY created_at DESC
-         LIMIT ? OFFSET ?`
-      )
-      .all(userId, limit, offset) as HistoryRow[]
+    const rows = (
+      filter === 'favorites' ? this.stmtListFavorites : this.stmtListAll
+    ).all(userId, limit, offset) as HistoryRow[]
 
     return rows.map(rowToEntry)
   }
 
   count(userId: number, filter: 'all' | 'favorites'): number {
-    const favoriteClause = filter === 'favorites' ? 'AND is_favorite = 1' : ''
-    const row = this.db
-      .prepare(
-        `SELECT COUNT(*) as count FROM translation_history
-         WHERE user_id = ? ${favoriteClause}`
-      )
-      .get(userId) as { count: number }
+    const row = (
+      filter === 'favorites' ? this.stmtCountFavorites : this.stmtCountAll
+    ).get(userId) as { count: number }
     return row.count
   }
 
@@ -92,46 +156,31 @@ export class HistoryService {
       textSimilarity(input.sourceText, last.source_text) >= this.similarityThreshold &&
       now - last.created_at < this.dedupIntervalSeconds * 1000
     ) {
-      this.db
-        .prepare(
-          `UPDATE translation_history
-           SET source_text = ?, target_text = ?, source_lang = ?, target_lang = ?, created_at = ?
-           WHERE id = ? AND user_id = ?`
-        )
-        .run(
-          input.sourceText,
-          input.targetText,
-          input.sourceLang,
-          input.targetLang,
-          now,
-          last.id,
-          userId
-        )
-
-      const updated = this.db
-        .prepare('SELECT * FROM translation_history WHERE id = ?')
-        .get(last.id) as HistoryRow
-      return rowToEntry(updated)
-    }
-
-    const result = this.db
-      .prepare(
-        `INSERT INTO translation_history
-         (user_id, source_text, target_text, source_lang, target_lang, is_favorite, created_at)
-         VALUES (?, ?, ?, ?, ?, 0, ?)`
-      )
-      .run(
-        userId,
+      this.stmtUpdateDedup.run(
         input.sourceText,
         input.targetText,
         input.sourceLang,
         input.targetLang,
-        now
+        now,
+        last.id,
+        userId
       )
 
-    const row = this.db
-      .prepare('SELECT * FROM translation_history WHERE id = ?')
-      .get(result.lastInsertRowid) as HistoryRow
+      const updated = this.stmtSelectById.get(last.id) as HistoryRow
+      return rowToEntry(updated)
+    }
+
+    const result = this.stmtInsert.run(
+      userId,
+      input.sourceText,
+      input.targetText,
+      input.sourceLang,
+      input.targetLang,
+      0,
+      now
+    )
+
+    const row = this.stmtSelectById.get(result.lastInsertRowid) as HistoryRow
     return rowToEntry(row)
   }
 
@@ -143,17 +192,9 @@ export class HistoryService {
       if (existing.is_favorite === 1) {
         return rowToEntry(existing)
       }
-      this.db
-        .prepare(
-          `UPDATE translation_history
-           SET is_favorite = 1, created_at = ?
-           WHERE id = ? AND user_id = ?`
-        )
-        .run(now, existing.id, userId)
+      this.stmtPromoteFavorite.run(now, existing.id, userId)
 
-      const updated = this.db
-        .prepare('SELECT * FROM translation_history WHERE id = ?')
-        .get(existing.id) as HistoryRow
+      const updated = this.stmtSelectById.get(existing.id) as HistoryRow
       return rowToEntry(updated)
     }
 
@@ -163,106 +204,64 @@ export class HistoryService {
       textSimilarity(input.sourceText, last.source_text) >= this.similarityThreshold &&
       now - last.created_at < this.dedupIntervalSeconds * 1000
     ) {
-      this.db
-        .prepare(
-          `UPDATE translation_history
-           SET source_text = ?, target_text = ?, source_lang = ?, target_lang = ?,
-               is_favorite = 1, created_at = ?
-           WHERE id = ? AND user_id = ?`
-        )
-        .run(
-          input.sourceText,
-          input.targetText,
-          input.sourceLang,
-          input.targetLang,
-          now,
-          last.id,
-          userId
-        )
-
-      const updated = this.db
-        .prepare('SELECT * FROM translation_history WHERE id = ?')
-        .get(last.id) as HistoryRow
-      return rowToEntry(updated)
-    }
-
-    const result = this.db
-      .prepare(
-        `INSERT INTO translation_history
-         (user_id, source_text, target_text, source_lang, target_lang, is_favorite, created_at)
-         VALUES (?, ?, ?, ?, ?, 1, ?)`
-      )
-      .run(
-        userId,
+      this.stmtUpdateFavoriteDedup.run(
         input.sourceText,
         input.targetText,
         input.sourceLang,
         input.targetLang,
-        now
+        now,
+        last.id,
+        userId
       )
 
-    const row = this.db
-      .prepare('SELECT * FROM translation_history WHERE id = ?')
-      .get(result.lastInsertRowid) as HistoryRow
+      const updated = this.stmtSelectById.get(last.id) as HistoryRow
+      return rowToEntry(updated)
+    }
+
+    const result = this.stmtInsert.run(
+      userId,
+      input.sourceText,
+      input.targetText,
+      input.sourceLang,
+      input.targetLang,
+      1,
+      now
+    )
+
+    const row = this.stmtSelectById.get(result.lastInsertRowid) as HistoryRow
     return rowToEntry(row)
   }
 
   toggleFavorite(userId: number, id: number): TranslationHistoryEntry | null {
-    const row = this.db
-      .prepare('SELECT * FROM translation_history WHERE id = ? AND user_id = ?')
-      .get(id, userId) as HistoryRow | undefined
-    if (!row) return null
+    const row = this.stmtSelectById.get(id) as HistoryRow | undefined
+    if (!row || row.user_id !== userId) return null
 
     const newFavorite = row.is_favorite === 1 ? 0 : 1
-    this.db
-      .prepare('UPDATE translation_history SET is_favorite = ? WHERE id = ? AND user_id = ?')
-      .run(newFavorite, id, userId)
+    this.stmtToggleFavorite.run(newFavorite, id, userId)
 
-    const updated = this.db
-      .prepare('SELECT * FROM translation_history WHERE id = ?')
-      .get(id) as HistoryRow
+    const updated = this.stmtSelectById.get(id) as HistoryRow
     return rowToEntry(updated)
   }
 
   delete(userId: number, id: number): boolean {
-    const result = this.db
-      .prepare('DELETE FROM translation_history WHERE id = ? AND user_id = ?')
-      .run(id, userId)
+    const result = this.stmtDelete.run(id, userId)
     return result.changes > 0
   }
 
   private getLatestNonFavorite(userId: number): HistoryRow | undefined {
-    return this.db
-      .prepare(
-        `SELECT * FROM translation_history
-         WHERE user_id = ? AND is_favorite = 0
-         ORDER BY created_at DESC
-         LIMIT 1`
-      )
-      .get(userId) as HistoryRow | undefined
+    return this.stmtGetLatestNonFavorite.get(userId) as HistoryRow | undefined
   }
 
   private findMatchingEntry(
     userId: number,
     input: SaveHistoryInput
   ): HistoryRow | undefined {
-    return this.db
-      .prepare(
-        `SELECT * FROM translation_history
-         WHERE user_id = ?
-           AND source_text = ?
-           AND target_text = ?
-           AND source_lang = ?
-           AND target_lang = ?
-         ORDER BY is_favorite ASC, created_at DESC
-         LIMIT 1`
-      )
-      .get(
-        userId,
-        input.sourceText,
-        input.targetText,
-        input.sourceLang,
-        input.targetLang
-      ) as HistoryRow | undefined
+    return this.stmtFindMatching.get(
+      userId,
+      input.sourceText,
+      input.targetText,
+      input.sourceLang,
+      input.targetLang
+    ) as HistoryRow | undefined
   }
 }

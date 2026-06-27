@@ -26,14 +26,8 @@ import {
   isAccessAuthEnabled,
   isRestartAuthEnabled,
   isUserLoginEnabled,
-  loadUserGlossary,
-  loadUserPreferencesConfig,
-  mergeGlossaryEntries,
-  mergeUserPreferences,
   parseJsonResponse,
   resolveDataDir,
-  resolveUserConfigPath,
-  resolveUserGlossaryPath,
   ASSETLINKS_SERVE_PATH,
   resolveAssetLinksPath,
   loadAssetLinksFile,
@@ -43,6 +37,7 @@ import {
   type AppConfig,
   type RephraseOption,
   type SynonymOption,
+  type UserProfile,
 } from '@parawrite/core'
 import path from 'node:path'
 import fs from 'node:fs'
@@ -62,6 +57,7 @@ import {
   loginAttemptKey,
   recordLoginFailure,
 } from './login-attempt-tracker.js'
+import { UserResourceCache } from './user-resources.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -99,69 +95,26 @@ function isPublicApiRoute(pathname: string): boolean {
   return PUBLIC_API_ROUTES.has(pathname)
 }
 
-function getUserLoginMeta(
+function getAuthenticatedProfile(
   userSessionManager: UserSessionManager,
   userService: UserService,
   token: string | undefined
-) {
+): UserProfile | null {
   const userId = userSessionManager.getUserId(token)
-  if (!userId) {
-    return { authenticated: false, user: null }
-  }
-  const profile = userService.getById(userId)
-  if (!profile) {
-    return { authenticated: false, user: null }
-  }
+  if (!userId) return null
+  return userService.getById(userId)
+}
+
+function toPublicUserSummary(profile: UserProfile) {
   return {
-    authenticated: true,
+    authenticated: true as const,
     user: {
       id: profile.id,
       username: profile.username,
       nickname: profile.nickname,
+      locale: profile.locale,
     },
   }
-}
-
-function resolveEffectiveConfig(
-  baseConfig: AppConfig,
-  configPath: string | undefined,
-  userService: UserService | null,
-  userSessionManager: UserSessionManager | null,
-  userToken: string | undefined
-): AppConfig {
-  if (!userService || !userSessionManager) return baseConfig
-  const userId = userSessionManager.getUserId(userToken)
-  if (!userId) return baseConfig
-  const profile = userService.getById(userId)
-  if (!profile) return baseConfig
-  const prefsPath = resolveUserConfigPath(profile.configId, baseConfig, configPath)
-  const prefs = loadUserPreferencesConfig(prefsPath, baseConfig)
-  if (!prefs) return baseConfig
-  return mergeUserPreferences(baseConfig, prefs)
-}
-
-function resolveEffectiveGlossary(
-  globalGlossary: GlossaryService,
-  baseConfig: AppConfig,
-  configPath: string | undefined,
-  userService: UserService | null,
-  userSessionManager: UserSessionManager | null,
-  userToken: string | undefined
-): GlossaryService {
-  let entries = globalGlossary.getEntries()
-  if (!userService || !userSessionManager) {
-    return GlossaryService.fromEntries(entries)
-  }
-  const userId = userSessionManager.getUserId(userToken)
-  if (!userId) return GlossaryService.fromEntries(entries)
-  const profile = userService.getById(userId)
-  if (!profile) return GlossaryService.fromEntries(entries)
-  const glossaryPath = resolveUserGlossaryPath(profile.glossaryId, baseConfig, configPath)
-  const userEntries = loadUserGlossary(glossaryPath)
-  if (userEntries.length > 0) {
-    entries = mergeGlossaryEntries(entries, userEntries)
-  }
-  return GlossaryService.fromEntries(entries)
 }
 
 export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> {
@@ -179,6 +132,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
   let userService: UserService | null = null
   let historyService: HistoryService | null = null
   let userSessionManager: UserSessionManager | null = null
+  let userResourceCache: UserResourceCache | null = null
 
   if (userLoginEnabled) {
     const dataDir = resolveDataDir(config, configPath)
@@ -191,7 +145,11 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
       historyConfig.dedupIntervalSeconds
     )
     userSessionManager = new UserSessionManager(getUserSessionTtlHours(config))
+    userResourceCache = new UserResourceCache(config, configPath, glossary)
   }
+
+  const assetLinksPath = resolveAssetLinksPath(config, configPath)
+  const assetLinksBody = loadAssetLinksFile(assetLinksPath)
 
   const app = new Hono<AppEnv>()
 
@@ -251,12 +209,10 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
   app.get('/health', (c) => c.json({ status: 'ok' }))
 
   app.get(ASSETLINKS_SERVE_PATH, (c) => {
-    const filePath = resolveAssetLinksPath(config, configPath)
-    const body = loadAssetLinksFile(filePath)
-    if (!body) {
+    if (!assetLinksBody) {
       return c.json({ error: 'assetlinks not configured' }, 404)
     }
-    return c.body(body, 200, {
+    return c.body(assetLinksBody, 200, {
       'Content-Type': 'application/json',
       'Cache-Control': 'public, max-age=3600',
     })
@@ -267,18 +223,17 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
     const authenticated = !accessAuthEnabled || authManager.isValidSession(token)
 
     const userToken = getCookie(c, USER_SESSION_COOKIE_NAME)
-    const userLogin =
-      userLoginEnabled && userService && userSessionManager
-        ? getUserLoginMeta(userSessionManager, userService, userToken)
-        : { authenticated: false, user: null }
+    let userLogin: { authenticated: false; user: null } | ReturnType<typeof toPublicUserSummary> =
+      { authenticated: false, user: null }
+    let effectiveConfig = config
 
-    const effectiveConfig = resolveEffectiveConfig(
-      config,
-      configPath,
-      userService,
-      userSessionManager,
-      userToken
-    )
+    if (userService && userSessionManager && userResourceCache) {
+      const profile = getAuthenticatedProfile(userSessionManager, userService, userToken)
+      if (profile) {
+        userLogin = toPublicUserSummary(profile)
+        effectiveConfig = userResourceCache.getEffectiveConfig(profile)
+      }
+    }
 
     return c.json(toPublicMeta(effectiveConfig, authenticated, userLogin))
   })
@@ -591,14 +546,13 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
     const engine = getEngine(provider)
 
     const userToken = getCookie(c, USER_SESSION_COOKIE_NAME)
-    const effectiveGlossary = resolveEffectiveGlossary(
-      glossary,
-      config,
-      configPath,
-      userService,
-      userSessionManager,
-      userToken
-    )
+    let effectiveGlossary = glossary
+    if (userService && userSessionManager && userResourceCache) {
+      const profile = getAuthenticatedProfile(userSessionManager, userService, userToken)
+      if (profile) {
+        effectiveGlossary = userResourceCache.getEffectiveGlossary(profile)
+      }
+    }
 
     const relevantGlossary = effectiveGlossary.findRelevant(body.text, body.sourceLang)
     const glossarySection = effectiveGlossary.buildPromptSection(
@@ -752,7 +706,8 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
         body.targetLang,
         body.uiLang ?? 'en',
         body.provider ?? config.app.default_provider,
-        body.model
+        body.model,
+        c.req.raw.signal
       )
       return c.json(entry)
     } catch (error) {

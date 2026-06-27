@@ -17,6 +17,7 @@ import type {
   ThemeColors,
   UserLoginMode,
   WordLookupMode,
+  RephraseBackTranslationPreload,
 } from './types.js'
 import { BUILD_VERSION } from './version.generated.js'
 import { getPaneWidthRatiosMeta } from './layout.js'
@@ -225,6 +226,31 @@ export function getRephraseHoverPreviewDelayMs(config: AppConfig): number {
   return Math.max(0, Math.round(delay))
 }
 
+export function normalizeRephraseBackTranslationPreload(
+  raw?: string
+): RephraseBackTranslationPreload {
+  switch (raw?.trim().toLowerCase()) {
+    case 'all':
+    case 'full':
+      return 'all'
+    case 'partial':
+    case 'hover':
+      return 'partial'
+    case 'off':
+    case 'none':
+    case 'false':
+      return 'off'
+    default:
+      return 'off'
+  }
+}
+
+export function getRephraseBackTranslationPreload(
+  config: AppConfig
+): RephraseBackTranslationPreload {
+  return normalizeRephraseBackTranslationPreload(config.app.rephrase_back_translation_preload)
+}
+
 export function getAutoSwapLanguages(config: AppConfig): boolean {
   return config.app.auto_swap_languages ?? false
 }
@@ -371,6 +397,7 @@ export function toPublicMeta(
     wordLookupMode: getWordLookupMode(config),
     rephraseHoverPreviewEnabled: getRephraseHoverPreviewEnabled(config),
     rephraseHoverPreviewDelayMs: getRephraseHoverPreviewDelayMs(config),
+    rephraseBackTranslationPreload: getRephraseBackTranslationPreload(config),
     autoSwapLanguages: getAutoSwapLanguages(config),
     userLogin: {
       enabled: loginEnabled,

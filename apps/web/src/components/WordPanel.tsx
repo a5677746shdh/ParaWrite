@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import { diffHighlight } from '@parawrite/core/client'
 import type {
   DictionaryEntry,
+  RephraseBackTranslationPreload,
   RephraseOption,
   SynonymOption,
 } from '@parawrite/core/client'
@@ -26,6 +27,7 @@ interface WordPanelProps {
   model: string | null
   rephraseHoverPreviewEnabled: boolean
   rephraseHoverPreviewDelayMs: number
+  rephraseBackTranslationPreload: RephraseBackTranslationPreload
   isPhraseSelection: boolean
   isLoading: boolean
   onApplySynonym: (word: string) => void
@@ -102,6 +104,130 @@ function useBackTranslationBaseline(
   }, [enabled, phrase, sourceLang, targetLang, provider, model])
 
   return baseline
+}
+
+const BACK_TRANSLATION_PREFETCH_CONCURRENCY = 3
+
+function useRephraseBackTranslationCache({
+  mode,
+  enabled,
+  options,
+  sourceLang,
+  targetLang,
+  provider,
+  model,
+  panelReady,
+}: {
+  mode: RephraseBackTranslationPreload
+  enabled: boolean
+  options: RephraseOption[]
+  sourceLang: string
+  targetLang: string
+  provider: string | null
+  model: string | null
+  panelReady: boolean
+}) {
+  const [cache, setCache] = useState<Record<string, string>>({})
+  const [loadingKeys, setLoadingKeys] = useState<Set<string>>(() => new Set())
+  const cacheRef = useRef<Record<string, string>>({})
+  const loadingKeysRef = useRef<Set<string>>(new Set())
+  const inflightRef = useRef<Map<string, AbortController>>(new Map())
+  const pendingRef = useRef<string[]>([])
+  const activeCountRef = useRef(0)
+
+  const optionsKey = options.map((opt) => opt.text).join('\0')
+
+  useEffect(() => {
+    inflightRef.current.forEach((controller) => controller.abort())
+    inflightRef.current.clear()
+    pendingRef.current = []
+    activeCountRef.current = 0
+    cacheRef.current = {}
+    loadingKeysRef.current = new Set()
+    setCache({})
+    setLoadingKeys(new Set())
+  }, [optionsKey, sourceLang, targetLang, provider, model])
+
+  const runPrefetch = useCallback(
+    (text: string) => {
+      if (!provider || !model || !sourceLang || sourceLang === 'auto') return
+
+      const controller = new AbortController()
+      inflightRef.current.set(text, controller)
+
+      void translateText(
+        {
+          text,
+          sourceLang: targetLang,
+          targetLang: sourceLang,
+          provider,
+          model,
+        },
+        controller.signal
+      )
+        .then((result) => {
+          if (controller.signal.aborted) return
+          const trimmed = result.trim()
+          cacheRef.current = { ...cacheRef.current, [text]: trimmed }
+          setCache((prev) => ({ ...prev, [text]: trimmed }))
+        })
+        .catch(() => {
+          if (controller.signal.aborted) return
+          cacheRef.current = { ...cacheRef.current, [text]: '' }
+          setCache((prev) => ({ ...prev, [text]: '' }))
+        })
+        .finally(() => {
+          inflightRef.current.delete(text)
+          activeCountRef.current = Math.max(0, activeCountRef.current - 1)
+          if (!controller.signal.aborted) {
+            const next = new Set(loadingKeysRef.current)
+            next.delete(text)
+            loadingKeysRef.current = next
+            setLoadingKeys(next)
+          }
+          while (
+            activeCountRef.current < BACK_TRANSLATION_PREFETCH_CONCURRENCY &&
+            pendingRef.current.length > 0
+          ) {
+            const nextText = pendingRef.current.shift()!
+            if (nextText in cacheRef.current || inflightRef.current.has(nextText)) continue
+            activeCountRef.current++
+            runPrefetch(nextText)
+          }
+        })
+    },
+    [sourceLang, targetLang, provider, model]
+  )
+
+  const prefetch = useCallback(
+    (text: string) => {
+      if (!enabled || mode === 'off' || !text.trim() || !provider || !model) return
+      if (text in cacheRef.current || inflightRef.current.has(text)) return
+      if (pendingRef.current.includes(text)) return
+      if (!sourceLang || sourceLang === 'auto') return
+
+      loadingKeysRef.current = new Set(loadingKeysRef.current).add(text)
+      setLoadingKeys(loadingKeysRef.current)
+
+      if (activeCountRef.current >= BACK_TRANSLATION_PREFETCH_CONCURRENCY) {
+        pendingRef.current.push(text)
+        return
+      }
+
+      activeCountRef.current++
+      runPrefetch(text)
+    },
+    [enabled, mode, sourceLang, targetLang, provider, model, runPrefetch]
+  )
+
+  useEffect(() => {
+    if (mode !== 'all' || !panelReady || !enabled) return
+    for (const opt of options) {
+      prefetch(opt.text)
+    }
+  }, [mode, panelReady, enabled, options, prefetch])
+
+  return { cache, loadingKeys, prefetch }
 }
 
 const BackTranslationArrow = memo(function BackTranslationArrow() {
@@ -190,6 +316,10 @@ const RephraseOptionRow = memo(function RephraseOptionRow({
   model,
   previewEnabled,
   previewDelayMs,
+  preloadMode,
+  preloadedPreview,
+  preloadLoading,
+  onPrefetch,
   batchPreviewVisible,
   batchPreview,
   batchPreviewLoading,
@@ -204,28 +334,57 @@ const RephraseOptionRow = memo(function RephraseOptionRow({
   model: string | null
   previewEnabled: boolean
   previewDelayMs: number
+  preloadMode: RephraseBackTranslationPreload
+  preloadedPreview: string | null
+  preloadLoading: boolean
+  onPrefetch: (text: string) => void
   batchPreviewVisible: boolean
   batchPreview: string | null
   batchPreviewLoading: boolean
   onApply: (text: string) => void
 }) {
-  const [preview, setPreview] = useState<string | null>(null)
-  const [previewLoading, setPreviewLoading] = useState(false)
+  const [localPreview, setLocalPreview] = useState<string | null>(null)
+  const [localPreviewLoading, setLocalPreviewLoading] = useState(false)
+  const [hoverPreviewVisible, setHoverPreviewVisible] = useState(false)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
-  const clearHoverPreview = useCallback(() => {
+  const usesPreloadCache = preloadMode !== 'off'
+
+  const clearHoverTimer = useCallback(() => {
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current)
       hoverTimerRef.current = null
     }
-    abortRef.current?.abort()
-    abortRef.current = null
-    setPreview(null)
-    setPreviewLoading(false)
   }, [])
 
+  const clearOffModeFetch = useCallback(() => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    setLocalPreview(null)
+    setLocalPreviewLoading(false)
+  }, [])
+
+  const clearHoverPreview = useCallback(() => {
+    clearHoverTimer()
+    setHoverPreviewVisible(false)
+    if (!usesPreloadCache) {
+      clearOffModeFetch()
+    }
+  }, [clearHoverTimer, clearOffModeFetch, usesPreloadCache])
+
   useEffect(() => () => clearHoverPreview(), [clearHoverPreview])
+
+  const scheduleHoverPreview = useCallback(
+    (delayMs: number) => {
+      clearHoverTimer()
+      hoverTimerRef.current = setTimeout(() => {
+        hoverTimerRef.current = null
+        setHoverPreviewVisible(true)
+      }, delayMs)
+    },
+    [clearHoverTimer]
+  )
 
   const handleMouseEnter = () => {
     if (
@@ -238,14 +397,20 @@ const RephraseOptionRow = memo(function RephraseOptionRow({
       return
     }
 
-    if (abortRef.current || preview) return
+    if (usesPreloadCache) {
+      onPrefetch(opt.text)
+      scheduleHoverPreview(previewDelayMs)
+      return
+    }
 
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    if (abortRef.current || localPreview) return
+
+    clearHoverTimer()
     hoverTimerRef.current = setTimeout(() => {
       hoverTimerRef.current = null
       const controller = new AbortController()
       abortRef.current = controller
-      setPreviewLoading(true)
+      setLocalPreviewLoading(true)
       void translateText(
         {
           text: opt.text,
@@ -257,13 +422,13 @@ const RephraseOptionRow = memo(function RephraseOptionRow({
         controller.signal
       )
         .then((text) => {
-          if (!controller.signal.aborted) setPreview(text.trim())
+          if (!controller.signal.aborted) setLocalPreview(text.trim())
         })
         .catch(() => {
-          if (!controller.signal.aborted) setPreview(null)
+          if (!controller.signal.aborted) setLocalPreview(null)
         })
         .finally(() => {
-          if (!controller.signal.aborted) setPreviewLoading(false)
+          if (!controller.signal.aborted) setLocalPreviewLoading(false)
         })
     }, previewDelayMs)
   }
@@ -274,7 +439,11 @@ const RephraseOptionRow = memo(function RephraseOptionRow({
     clearHoverPreview()
   }
 
-  const showHoverPreview = previewEnabled && (previewLoading || preview)
+  const preview = usesPreloadCache ? preloadedPreview : localPreview
+  const previewLoading = usesPreloadCache ? preloadLoading : localPreviewLoading
+  const showHoverPreview = usesPreloadCache
+    ? previewEnabled && hoverPreviewVisible && (previewLoading || !!preview)
+    : previewEnabled && (previewLoading || !!preview)
 
   return (
     <li
@@ -320,7 +489,7 @@ const RephraseOptionRow = memo(function RephraseOptionRow({
   )
 })
 
-export function WordPanel({
+export const WordPanel = memo(function WordPanel({
   mode,
   visible,
   selectedWord,
@@ -334,6 +503,7 @@ export function WordPanel({
   model,
   rephraseHoverPreviewEnabled,
   rephraseHoverPreviewDelayMs,
+  rephraseBackTranslationPreload,
   isPhraseSelection,
   isLoading,
   onApplySynonym,
@@ -347,13 +517,50 @@ export function WordPanel({
   const [batchExpanded, setBatchExpanded] = useState(false)
   const [batchPreviews, setBatchPreviews] = useState<Record<string, string>>({})
   const [batchLoading, setBatchLoading] = useState(false)
+  const [partialBaselineActive, setPartialBaselineActive] = useState(false)
+  const partialBaselineActiveRef = useRef(false)
   const batchAbortRef = useRef<AbortController | null>(null)
 
   const canBackTranslate =
     !!provider && !!model && !!sourceLang && sourceLang !== 'auto'
 
+  const rephrasePanelReady =
+    canBackTranslate && !isLoading && rephraseOptions.length > 0
+
+  const { cache: backTranslationCache, loadingKeys: backTranslationLoading, prefetch } =
+    useRephraseBackTranslationCache({
+    mode: rephraseBackTranslationPreload,
+    enabled: canBackTranslate,
+    options: rephraseOptions,
+    sourceLang,
+    targetLang,
+    provider,
+    model,
+    panelReady: rephrasePanelReady,
+  })
+
+  const requestPartialBaseline = useCallback(() => {
+    if (partialBaselineActiveRef.current) return
+    partialBaselineActiveRef.current = true
+    setPartialBaselineActive(true)
+  }, [])
+
+  const prefetchBackTranslation = useCallback(
+    (text: string) => {
+      if (rephraseBackTranslationPreload === 'partial') {
+        requestPartialBaseline()
+      }
+      prefetch(text)
+    },
+    [rephraseBackTranslationPreload, prefetch, requestPartialBaseline]
+  )
+
   const baselineBackTranslation = useBackTranslationBaseline(
-    canBackTranslate && (rephraseHoverPreviewEnabled || batchExpanded),
+    canBackTranslate &&
+      (batchExpanded ||
+        (rephraseBackTranslationPreload === 'all' && rephrasePanelReady) ||
+        (rephraseBackTranslationPreload === 'partial' && partialBaselineActive) ||
+        (rephraseBackTranslationPreload === 'off' && rephraseHoverPreviewEnabled)),
     rephraseOriginalSentence,
     sourceLang,
     targetLang,
@@ -365,6 +572,8 @@ export function WordPanel({
     setBatchExpanded(false)
     setBatchPreviews({})
     setBatchLoading(false)
+    partialBaselineActiveRef.current = false
+    setPartialBaselineActive(false)
     batchAbortRef.current?.abort()
     batchAbortRef.current = null
   }, [rephraseOptions, rephraseOriginalSentence])
@@ -387,9 +596,22 @@ export function WordPanel({
   const expandBatch = useCallback(() => {
     if (!canBackTranslate || rephraseOptions.length === 0) return
 
+    setBatchExpanded(true)
+
+    if (rephraseBackTranslationPreload === 'all') {
+      return
+    }
+
+    if (rephraseBackTranslationPreload === 'partial') {
+      requestPartialBaseline()
+      for (const opt of rephraseOptions) {
+        prefetch(opt.text)
+      }
+      return
+    }
+
     const controller = new AbortController()
     batchAbortRef.current = controller
-    setBatchExpanded(true)
     setBatchPreviews({})
     setBatchLoading(true)
 
@@ -417,7 +639,17 @@ export function WordPanel({
       setBatchPreviews(next)
       setBatchLoading(false)
     })
-  }, [canBackTranslate, rephraseOptions, sourceLang, targetLang, provider, model])
+  }, [
+    canBackTranslate,
+    rephraseOptions,
+    rephraseBackTranslationPreload,
+    prefetch,
+    requestPartialBaseline,
+    sourceLang,
+    targetLang,
+    provider,
+    model,
+  ])
 
   const toggleBatchBackTranslate = () => {
     if (batchExpanded) {
@@ -548,7 +780,13 @@ export function WordPanel({
             </div>
             {rephraseOptions.length > 0 ? (
               <ul className="space-y-1.5">
-                {rephraseOptions.map((opt) => (
+                {rephraseOptions.map((opt) => {
+                  const cached = opt.text in backTranslationCache ? backTranslationCache[opt.text] : undefined
+                  const preloadedPreview = cached === undefined ? null : cached || null
+                  const preloadLoading = backTranslationLoading.has(opt.text)
+                  const useSharedCache = rephraseBackTranslationPreload !== 'off'
+
+                  return (
                   <RephraseOptionRow
                     key={opt.text}
                     opt={opt}
@@ -560,12 +798,23 @@ export function WordPanel({
                     model={model}
                     previewEnabled={rephraseHoverPreviewEnabled && !batchExpanded}
                     previewDelayMs={rephraseHoverPreviewDelayMs}
+                    preloadMode={rephraseBackTranslationPreload}
+                    preloadedPreview={preloadedPreview}
+                    preloadLoading={preloadLoading}
+                    onPrefetch={prefetchBackTranslation}
                     batchPreviewVisible={batchExpanded}
-                    batchPreview={batchPreviews[opt.text] ?? null}
-                    batchPreviewLoading={batchLoading && !(opt.text in batchPreviews)}
+                    batchPreview={
+                      useSharedCache ? preloadedPreview : (batchPreviews[opt.text] ?? null)
+                    }
+                    batchPreviewLoading={
+                      useSharedCache
+                        ? preloadLoading && cached === undefined
+                        : batchLoading && !(opt.text in batchPreviews)
+                    }
                     onApply={onApplyRephrase}
                   />
-                ))}
+                  )
+                })}
               </ul>
             ) : isLoading ? (
               <PanelLoader />
@@ -617,4 +866,4 @@ export function WordPanel({
       {panelBody}
     </aside>
   )
-}
+})

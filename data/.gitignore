@@ -1,3 +1,5 @@
 # SQLite user data (users.data_dir)
 *.db
 *.db-*
+user-configs/
+user-glossaries/

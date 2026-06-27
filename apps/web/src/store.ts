@@ -13,6 +13,15 @@ import type {
 } from '@parawrite/core/client'
 import { fetchMeta, fetchUserMe } from './api'
 import { applyUiLanguage } from './lib/ui-language'
+import { markLanguageSwap } from './lib/translate-guards'
+
+function applyLocaleFromMeta(meta: PublicMeta): string | null {
+  const locale = meta.userLogin?.user?.locale ?? null
+  if (locale) {
+    applyUiLanguage(locale)
+  }
+  return locale
+}
 
 interface TranslationState {
   meta: PublicMeta | null
@@ -95,6 +104,7 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
       meta,
       provider: meta.defaultProvider,
       model: meta.defaultModel,
+      userLocale: meta.userLogin?.authenticated ? applyLocaleFromMeta(meta) : null,
     }),
   refreshMeta: async () => {
     const meta = await fetchMeta()
@@ -102,15 +112,25 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
       meta,
       provider: meta.defaultProvider,
       model: meta.defaultModel,
+      userLocale: meta.userLogin?.authenticated ? applyLocaleFromMeta(meta) : null,
     })
-    if (meta.userLogin?.authenticated) {
+    if (
+      meta.userLogin?.authenticated &&
+      meta.userLogin.user &&
+      !('locale' in meta.userLogin.user)
+    ) {
       await get().syncUserLocale()
-    } else {
-      set({ userLocale: null })
     }
     return meta
   },
   syncUserLocale: async () => {
+    const meta = get().meta
+    if (meta?.userLogin?.authenticated && meta.userLogin.user) {
+      const locale = meta.userLogin.user.locale ?? null
+      set({ userLocale: locale })
+      if (locale) applyUiLanguage(locale)
+      return null
+    }
     try {
       const profile = await fetchUserMe()
       set({ userLocale: profile.locale })
@@ -133,6 +153,8 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
     const { sourceLang, targetLang, sourceText, targetText, detectedSourceLang } = get()
     const effectiveSource = sourceLang === 'auto' ? detectedSourceLang : sourceLang
     if (!effectiveSource) return
+
+    markLanguageSwap(targetText)
 
     set({
       sourceLang: targetLang,
