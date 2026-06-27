@@ -22,6 +22,7 @@ import {
   getUserSessionTtlHours,
   getAccessSessionTtlHours,
   getLoggingConfig,
+  getPointOutGlossary,
   GlossaryService,
   isAccessAuthEnabled,
   isRestartAuthEnabled,
@@ -58,6 +59,7 @@ import {
   recordLoginFailure,
 } from './login-attempt-tracker.js'
 import { UserResourceCache } from './user-resources.js'
+import { isClientAbort } from './request-abort.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -226,16 +228,26 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
     let userLogin: { authenticated: false; user: null } | ReturnType<typeof toPublicUserSummary> =
       { authenticated: false, user: null }
     let effectiveConfig = config
+    let profile: UserProfile | null = null
 
     if (userService && userSessionManager && userResourceCache) {
-      const profile = getAuthenticatedProfile(userSessionManager, userService, userToken)
+      profile = getAuthenticatedProfile(userSessionManager, userService, userToken)
       if (profile) {
         userLogin = toPublicUserSummary(profile)
         effectiveConfig = userResourceCache.getEffectiveConfig(profile)
       }
     }
 
-    return c.json(toPublicMeta(effectiveConfig, authenticated, userLogin))
+    const pointOutGlossary = getPointOutGlossary(effectiveConfig)
+    let effectiveGlossary = glossary
+    if (profile && userResourceCache) {
+      effectiveGlossary = userResourceCache.getEffectiveGlossary(profile)
+    }
+
+    return c.json({
+      ...toPublicMeta(effectiveConfig, authenticated, userLogin),
+      glossaryEntries: pointOutGlossary !== 'off' ? effectiveGlossary.getEntries() : [],
+    })
   })
 
   app.post('/api/auth/verify', async (c) => {
@@ -580,6 +592,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
         }
         await stream.writeSSE({ data: '[DONE]' })
       } catch (error) {
+        if (isClientAbort(error, c.req.raw.signal)) return
         const message = error instanceof Error ? error.message : 'Translation failed'
         logModelRouteError(c, events, message)
         await stream.writeSSE({ data: JSON.stringify({ error: message }) })
@@ -620,6 +633,9 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
       const parsed = parseJsonResponse<{ synonyms: SynonymOption[] }>(response)
       return c.json({ synonyms: parsed.synonyms ?? [] })
     } catch (error) {
+      if (isClientAbort(error, c.req.raw.signal)) {
+        return c.body(null, 204)
+      }
       const message = error instanceof Error ? error.message : 'Synonyms request failed'
       logModelRouteError(c, events, message)
       return c.json({ error: message }, 500)
@@ -659,6 +675,9 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
       const parsed = parseJsonResponse<{ alternatives: RephraseOption[] }>(response)
       return c.json({ alternatives: parsed.alternatives ?? [] })
     } catch (error) {
+      if (isClientAbort(error, c.req.raw.signal)) {
+        return c.body(null, 204)
+      }
       const message = error instanceof Error ? error.message : 'Rephrase request failed'
       logModelRouteError(c, events, message)
       return c.json({ error: message }, 500)
@@ -711,6 +730,9 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
       )
       return c.json(entry)
     } catch (error) {
+      if (isClientAbort(error, c.req.raw.signal)) {
+        return c.body(null, 204)
+      }
       const message = error instanceof Error ? error.message : 'Dictionary context failed'
       logModelRouteError(c, events, message)
       return c.json({ error: message }, 500)

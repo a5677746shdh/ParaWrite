@@ -8,7 +8,7 @@ import { buildDictionaryContextPrompt, parseJsonResponse } from './prompts.js'
 import { buildMessages } from './engines/base.js'
 import type { IEngine } from './engines/base.js'
 import { getEngineForProvider } from './engines/index.js'
-import { getDefaultModel } from './config.js'
+import { getDefaultModel, getDictionaryLlmShowExamples } from './config.js'
 
 const cache = new LRUCache<string, DictionaryEntry>({ max: 500, ttl: 1000 * 60 * 60 })
 
@@ -31,6 +31,38 @@ export class DictionaryService {
     private readonly config: AppConfig,
     private readonly resolveEngine?: (providerId: string) => IEngine
   ) {}
+
+  private llmShowExamples(): boolean {
+    return getDictionaryLlmShowExamples(this.config)
+  }
+
+  private stripLlmExamples(entry: DictionaryEntry): DictionaryEntry {
+    if (entry.source !== 'llm' || this.llmShowExamples()) return entry
+    return {
+      ...entry,
+      meanings: entry.meanings.map(({ example: _example, ...meaning }) => meaning),
+    }
+  }
+
+  private normalizeLlmMeanings(
+    meanings: Array<{
+      partOfSpeech?: string
+      definition: string
+      example?: string
+    }>
+  ) {
+    const showExamples = this.llmShowExamples()
+    return meanings
+      .filter((m) => m.definition?.trim())
+      .map(({ partOfSpeech, definition, example }) => {
+        const meaning = {
+          partOfSpeech,
+          definition,
+          ...(showExamples && example?.trim() ? { example: example.trim() } : {}),
+        }
+        return meaning
+      })
+  }
 
   async lookup(lang: string, word: string): Promise<DictionaryEntry | null> {
     const key = `${lang}:${word.toLowerCase()}`
@@ -67,11 +99,12 @@ export class DictionaryService {
   ): Promise<DictionaryEntry | null> {
     const definitionLang = uiLang === 'zh' ? 'zh' : uiLang === 'en' ? 'en' : uiLang
     const bilingual = definitionLang !== targetLang
-    const cacheKey = `${targetLang}:${definitionLang}:${word.toLowerCase()}`
+    const showExamples = this.llmShowExamples()
+    const cacheKey = `${targetLang}:${definitionLang}:${word.toLowerCase()}:${showExamples ? 'ex' : 'noex'}`
 
     const cachedContext = cache.get(cacheKey)
     if (cachedContext && cachedContext.meanings.length > 0) {
-      return cachedContext
+      return this.stripLlmExamples(cachedContext)
     }
 
     if (!bilingual) {
@@ -95,7 +128,8 @@ export class DictionaryService {
       sourceText,
       sourceLang,
       targetLang,
-      definitionLang
+      definitionLang,
+      showExamples
     )
 
     const response = await engine.chat({
@@ -115,7 +149,7 @@ export class DictionaryService {
       }>
     }>(response)
 
-    const meanings = (parsed.meanings ?? []).filter((m) => m.definition?.trim())
+    const meanings = this.normalizeLlmMeanings(parsed.meanings ?? [])
     if (meanings.length > 0) {
       const entry: DictionaryEntry = {
         word: parsed.word ?? word,
@@ -124,7 +158,7 @@ export class DictionaryService {
         source: 'llm',
       }
       cache.set(cacheKey, entry)
-      return entry
+      return this.stripLlmExamples(entry)
     }
 
     if (bilingual) {

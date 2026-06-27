@@ -18,6 +18,7 @@ import type {
   UserLoginMode,
   WordLookupMode,
   RephraseBackTranslationPreload,
+  PointOutGlossaryMode,
 } from './types.js'
 import { BUILD_VERSION } from './version.generated.js'
 import { getPaneWidthRatiosMeta } from './layout.js'
@@ -255,6 +256,27 @@ export function getAutoSwapLanguages(config: AppConfig): boolean {
   return config.app.auto_swap_languages ?? false
 }
 
+export function normalizePointOutGlossary(raw?: string): PointOutGlossaryMode {
+  switch (raw?.trim().toLowerCase()) {
+    case 'first':
+      return 'first'
+    case 'full':
+      return 'full'
+    case 'off':
+      return 'off'
+    default:
+      return 'off'
+  }
+}
+
+export function getPointOutGlossary(config: AppConfig): PointOutGlossaryMode {
+  return normalizePointOutGlossary(config.glossary?.point_out_glossary)
+}
+
+export function getDictionaryLlmShowExamples(config: AppConfig): boolean {
+  return config.dictionary?.llm_show_examples ?? false
+}
+
 export function isManualWordLookup(config: AppConfig): boolean {
   return getWordLookupMode(config) === 'manual'
 }
@@ -399,6 +421,8 @@ export function toPublicMeta(
     rephraseHoverPreviewDelayMs: getRephraseHoverPreviewDelayMs(config),
     rephraseBackTranslationPreload: getRephraseBackTranslationPreload(config),
     autoSwapLanguages: getAutoSwapLanguages(config),
+    pointOutGlossary: getPointOutGlossary(config),
+    glossaryEntries: [],
     userLogin: {
       enabled: loginEnabled,
       mode: loginMode,

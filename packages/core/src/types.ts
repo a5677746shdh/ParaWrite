@@ -24,10 +24,22 @@ export interface DictionaryConfig {
   free_dictionary: boolean
   wiktionary: boolean
   llm_fallback: boolean
+  /** When LLM generates dictionary entries, include usage examples (default: false). */
+  llm_show_examples?: boolean
 }
 
 export interface GlossaryConfig {
   file?: string
+  /** Mark glossary terms in panes: `off`, `first` (dot under first char), `full` (underline). */
+  point_out_glossary?: PointOutGlossaryMode
+}
+
+/** How matched glossary terms are marked in the editor panes. */
+export type PointOutGlossaryMode = 'off' | 'first' | 'full'
+
+export interface GlossaryEntry {
+  /** ISO 639-1 language code → term */
+  translations: Record<string, string>
 }
 
 export interface PwaConfig {
@@ -266,6 +278,8 @@ export interface PublicMeta {
   rephraseHoverPreviewDelayMs: number
   rephraseBackTranslationPreload: RephraseBackTranslationPreload
   autoSwapLanguages: boolean
+  pointOutGlossary: PointOutGlossaryMode
+  glossaryEntries: GlossaryEntry[]
   userLogin: PublicUserLoginMeta
   theme: ThemeColors
   historyConfig: PublicHistoryConfig

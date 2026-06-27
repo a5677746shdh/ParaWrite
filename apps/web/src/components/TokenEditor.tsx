@@ -7,18 +7,27 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import {
   combineTextFromRange,
   extendWordRange,
+  extractClauseAtOffset,
   extractClauseByWord,
+  extractSentenceAtOffset,
   extractSentenceByWord,
+  findGlossaryMarkRanges,
   findTokenRangeForText,
   getAdjacentWordHintsOutsideRange,
+  getSelectionCharOffset,
   isAdjacentWordToRange,
   isWordInRange,
   segmentText,
   shrinkWordRange,
+  type AlternativesSeparator,
+  type GlossaryEntry,
+  type PointOutGlossaryMode,
   type SelectionGranularity,
   type TokenSegment,
+  type CharRange,
 } from '@parawrite/core/client'
 import clsx from 'clsx'
+import { GlossaryMarkedText } from './GlossaryMarkedText'
 import { paneEditorTextClass, panePlaceholderClass, wordSelectionClass } from '../ui'
 
 interface TokenEditorProps {
@@ -27,12 +36,29 @@ interface TokenEditorProps {
   isStreaming: boolean
   selectedRange: { start: number; end: number } | null
   selectionGranularity?: SelectionGranularity | null
+  alternativesSeparator?: AlternativesSeparator
+  pointOutGlossary?: PointOutGlossaryMode
+  glossaryEntries?: GlossaryEntry[]
   placeholder?: string
   onTokenClick: (word: string, range: { start: number; end: number }) => void
   onConsecutiveWordSelect?: (word: string, range: { start: number; end: number }) => void
   onShrinkWordSelect?: (word: string, range: { start: number; end: number }) => void
   onPhraseSelect?: (word: string, range: { start: number; end: number }) => void
   onDeselect?: () => void
+}
+
+function rangesForSegment(
+  globalRanges: CharRange[],
+  charStart: number,
+  segmentLength: number
+): CharRange[] {
+  const charEnd = charStart + segmentLength
+  return globalRanges
+    .filter((range) => range.end > charStart && range.start < charEnd)
+    .map((range) => ({
+      start: Math.max(0, range.start - charStart),
+      end: Math.min(segmentLength, range.end - charStart),
+    }))
 }
 
 const CLICK_DELAY_MS = 350
@@ -50,8 +76,26 @@ export const TokenEditor = memo(function TokenEditor({
   onShrinkWordSelect,
   onPhraseSelect,
   onDeselect,
+  pointOutGlossary = 'off',
+  glossaryEntries = [],
+  alternativesSeparator = 'comma',
 }: TokenEditorProps) {
   const segments = useMemo(() => segmentText(text, lang), [text, lang])
+  const glossaryRanges = useMemo(() => {
+    if (pointOutGlossary === 'off' || glossaryEntries.length === 0 || !text) {
+      return []
+    }
+    return findGlossaryMarkRanges(text, glossaryEntries, lang)
+  }, [text, lang, glossaryEntries, pointOutGlossary])
+
+  const segmentMarks = useMemo(() => {
+    let charOffset = 0
+    return segments.map((seg) => {
+      const localRanges = rangesForSegment(glossaryRanges, charOffset, seg.text.length)
+      charOffset += seg.text.length
+      return localRanges
+    })
+  }, [segments, glossaryRanges])
   const containerRef = useRef<HTMLDivElement>(null)
   const clickCountRef = useRef(0)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -95,12 +139,19 @@ export const TokenEditor = memo(function TokenEditor({
 
     if (!onPhraseSelect) return
 
+    const selectionOffset = getSelectionCharOffset(segments, pending.range)
     const phraseText =
       count >= 3
-        ? extractSentenceByWord(text, pending.word, lang)
-        : extractClauseByWord(text, pending.word, lang)
+        ? selectionOffset !== null
+          ? extractSentenceAtOffset(text, selectionOffset)
+          : extractSentenceByWord(text, pending.word, lang)
+        : selectionOffset !== null
+          ? extractClauseAtOffset(text, selectionOffset, alternativesSeparator)
+          : extractClauseByWord(text, pending.word, lang, alternativesSeparator)
 
-    const phraseRange = findTokenRangeForText(segments, phraseText) ?? pending.range
+    const phraseRange =
+      findTokenRangeForText(segments, phraseText, selectionOffset ?? undefined) ??
+      pending.range
     onPhraseSelect(phraseText, phraseRange)
   }
 
@@ -229,7 +280,17 @@ export const TokenEditor = memo(function TokenEditor({
           paneEditorTextClass
         )}
       >
-        {text || (
+        {text ? (
+          glossaryRanges.length > 0 && pointOutGlossary !== 'off' ? (
+            <GlossaryMarkedText
+              text={text}
+              mode={pointOutGlossary}
+              ranges={glossaryRanges}
+            />
+          ) : (
+            text
+          )
+        ) : (
           <span className={panePlaceholderClass}>{placeholder ?? '\u00a0'}</span>
         )}
       </div>
@@ -242,12 +303,14 @@ export const TokenEditor = memo(function TokenEditor({
       onMouseUp={handleMouseUp}
       className={clsx('block min-h-[6rem] w-full select-text', paneEditorTextClass)}
     >
-      {segments.map((seg) => (
+      {segments.map((seg, index) => (
         <TokenSpan
           key={`${seg.index}-${seg.text}`}
           segment={seg}
           selectedRange={selectedRange}
           flashRanges={flashRanges}
+          pointOutGlossary={pointOutGlossary}
+          glossaryRanges={segmentMarks[index] ?? []}
           onTokenClick={handleWordClick}
         />
       ))}
@@ -259,11 +322,15 @@ function TokenSpan({
   segment,
   selectedRange,
   flashRanges,
+  pointOutGlossary,
+  glossaryRanges,
   onTokenClick,
 }: {
   segment: TokenSegment
   selectedRange: { start: number; end: number } | null
   flashRanges: Array<{ start: number; end: number }> | null
+  pointOutGlossary: PointOutGlossaryMode
+  glossaryRanges: CharRange[]
   onTokenClick: (word: string, range: { start: number; end: number }) => void
 }) {
   const isSelected =
@@ -277,6 +344,17 @@ function TokenSpan({
     ) ?? false
 
   if (!segment.isWord) {
+    if (glossaryRanges.length > 0 && pointOutGlossary !== 'off') {
+      return (
+        <span className="whitespace-pre-wrap">
+          <GlossaryMarkedText
+            text={segment.text}
+            mode={pointOutGlossary}
+            ranges={glossaryRanges}
+          />
+        </span>
+      )
+    }
     return <span className="whitespace-pre-wrap">{segment.text}</span>
   }
 
@@ -291,7 +369,15 @@ function TokenSpan({
         isSelected || isFlashing ? wordSelectionClass : 'transition-colors'
       )}
     >
-      {segment.text}
+      {glossaryRanges.length > 0 && pointOutGlossary !== 'off' ? (
+        <GlossaryMarkedText
+          text={segment.text}
+          mode={pointOutGlossary}
+          ranges={glossaryRanges}
+        />
+      ) : (
+        segment.text
+      )}
     </button>
   )
 }

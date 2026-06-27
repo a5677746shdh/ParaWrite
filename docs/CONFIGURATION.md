@@ -29,7 +29,7 @@ app:
   translate_on_enter: false         # true: Enter; false: Ctrl/Cmd+Enter
   auto_swap_languages: false        # true: swap language pair when source text matches target language
   alternatives_separator:
-    default: comma                  # comma | period
+    default: comma                  # comma | period — rephrase unit boundaries + API response splitting
     by_language:
       zh: period
       ja: period
@@ -58,6 +58,17 @@ In two-column and three-column layouts, adjust source/target pane widths by lang
 | en → zh | `en-zh: 0.6` | Source 60% (forward key wins) |
 
 Ratios apply when the user selects languages or when auto-detect resolves the source language. Stacked (mobile) layout stays single-column.
+
+### Alternatives separator
+
+`alternatives_separator` controls both **rephrase selection range** (single-click word lookup) and how multi-alternative API responses are split.
+
+| Value | Rephrase unit boundaries |
+|-------|--------------------------|
+| `comma` | Comma-like (`,，、;；:：`) **and** sentence-ending (`.。．!?！？…`) |
+| `period` | Sentence-ending only (`.。．!?！？…`) |
+
+Per-language overrides use the **target language** code (e.g. English target → `default: comma`).
 
 ### Auto language swap
 
@@ -128,18 +139,34 @@ dictionary:
   free_dictionary: true   # English: Free Dictionary API
   wiktionary: true        # Multilingual Wiktionary
   llm_fallback: true      # LLM-generated definitions when APIs miss
+  llm_show_examples: false  # Include usage examples in LLM dictionary entries (default: false)
 ```
 
-Contextual lookups (`POST /api/dictionary/context`) combine these sources and respect UI language for bilingual definitions.
+Contextual lookups (`POST /api/dictionary/context`) combine these sources and respect UI language for bilingual definitions. When `llm_show_examples` is `false`, the LLM prompt omits the `example` field and results are returned without usage examples. Free Dictionary API examples are unaffected.
 
 ## Glossary
 
 ```yaml
 glossary:
   file: config/glossary.yaml
+  point_out_glossary: off   # off | first | full
 ```
 
 Relative paths resolve from the app root. Terms are injected into translation prompts when relevant. See [`config/glossary.example.yaml`](../config/glossary.example.yaml). Language keys use **ISO 639-1** (`zh`, `en`, …).
+
+### Glossary marks in editor panes
+
+When enabled, terms from the effective glossary (global + per-user merge when logged in) are marked in the source and target panes:
+
+| Value | Display |
+|-------|---------|
+| `off` | No marking (default) |
+| `first` | Border-colored dot (4px) under the first character of each matched term |
+| `full` | Border-colored line (2px) under the entire matched term |
+
+Matching uses the source language in the source pane (all glossary languages when source is `auto`) and the target language in the target pane. Longer terms take priority; overlaps are skipped.
+
+Entries are sent to the browser via `/api/meta` when `point_out_glossary` is not `off`.
 
 ## PWA / Android TWA
 

@@ -4,6 +4,25 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [0.8.2] — 2026-06-27
+
+### Added
+- Glossary term marking in source and target panes (`point_out_glossary`: `off` | `first` | `full`)
+- `dictionary.llm_show_examples` (default `false`) — omit LLM dictionary examples from prompt and UI when disabled
+- Selection-aware rephrase/clause extraction by token position (handles duplicate words in translation)
+- `alternatives_separator` now defines rephrase unit boundaries; `comma` mode also splits on sentence-ending punctuation
+
+### Changed
+- Removed word-panel client cache to avoid stale synonyms/rephrase results
+- Expanded clause/sentence punctuation sets (fullwidth comma, colon, ellipsis, `?`/`!`, etc.)
+- Switching UI language refreshes dictionary for the active word selection
+
+### Fixed
+- Rephrase apply replaces the full rephrase target clause, not just the clicked word
+- Rephrase apply strips trailing sentence punctuation when the following text already has clause punctuation
+- Duplicate words (e.g. two `are`) no longer share the first occurrence's rephrase alternatives
+- Client-aborted translate/synonyms/rephrase/dictionary requests no longer log false model API errors
+
 ## [0.8.1] — 2026-06-27
 
 ### Added

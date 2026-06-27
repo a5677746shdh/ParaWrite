@@ -45,9 +45,11 @@ dictionary:
   free_dictionary: true
   wiktionary: true
   llm_fallback: true
+  llm_show_examples: false
 
 glossary:
   file: config/glossary.yaml
+  point_out_glossary: off
 
 pwa:
   assetlinks_file: config/assetlinks.json

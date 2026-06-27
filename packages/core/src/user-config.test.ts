@@ -24,7 +24,7 @@ const baseConfig = {
       models: [{ id: 'gpt-4o-mini', name: 'Mini', default: true }],
     },
   },
-  dictionary: { free_dictionary: true, wiktionary: true, llm_fallback: true },
+  dictionary: { free_dictionary: true, wiktionary: true, llm_fallback: true, llm_show_examples: false },
   theme: { primary: '#000000', accent: '#111111' },
 } satisfies AppConfig
 

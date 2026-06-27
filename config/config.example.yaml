@@ -84,12 +84,14 @@ dictionary:
   free_dictionary: true   # 英语：Free Dictionary API
   wiktionary: true        # 多语言：Wiktionary
   llm_fallback: true      # 以上均无结果时用 LLM 生成释义
+  llm_show_examples: false  # LLM 词典是否返回/显示例句（默认关闭）
 
 # ---------------------------------------------------------------------------
 # 自定义术语表 / Glossary（相对项目根目录）
 # ---------------------------------------------------------------------------
 glossary:
   file: config/glossary.yaml
+  point_out_glossary: off   # off | first | full — 术语表词汇标注：关闭 / 首字圆点 / 全文下划线
 
 # ---------------------------------------------------------------------------
 # PWA / Android TWA（Digital Asset Links）

@@ -1,10 +1,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import yaml from 'js-yaml'
+import type { GlossaryEntry, PointOutGlossaryMode } from './types.js'
 
-export interface GlossaryEntry {
-  /** ISO 639-1 language code → term */
-  translations: Record<string, string>
+export type { GlossaryEntry, PointOutGlossaryMode }
+
+export interface CharRange {
+  /** Inclusive start index in text */
+  start: number
+  /** Exclusive end index */
+  end: number
 }
 
 interface GlossaryFile {
@@ -84,6 +89,71 @@ export function mergeGlossaryEntries(
   })
 
   return [...filtered, ...override]
+}
+
+/** Collect glossary terms that appear in `text` for the given language (`auto` checks all translations). */
+export function collectGlossaryTermsInText(
+  entries: GlossaryEntry[],
+  text: string,
+  lang: string
+): string[] {
+  if (!text || entries.length === 0) return []
+
+  const terms: string[] = []
+  for (const entry of entries) {
+    if (lang === 'auto') {
+      for (const term of Object.values(entry.translations)) {
+        if (term && text.includes(term)) terms.push(term)
+      }
+    } else {
+      const term = entry.translations[lang]
+      if (term && text.includes(term)) terms.push(term)
+    }
+  }
+  return terms
+}
+
+/** Find non-overlapping glossary term occurrences; longer terms take priority. */
+export function findGlossaryOccurrences(text: string, terms: string[]): CharRange[] {
+  if (!text || terms.length === 0) return []
+
+  const unique = [...new Set(terms.filter((t) => t.length > 0))].sort(
+    (a, b) => b.length - a.length
+  )
+  const occupied = new Uint8Array(text.length)
+  const ranges: CharRange[] = []
+
+  for (const term of unique) {
+    let from = 0
+    while (from <= text.length - term.length) {
+      const idx = text.indexOf(term, from)
+      if (idx === -1) break
+      const end = idx + term.length
+      let overlaps = false
+      for (let i = idx; i < end; i++) {
+        if (occupied[i]) {
+          overlaps = true
+          break
+        }
+      }
+      if (!overlaps) {
+        for (let i = idx; i < end; i++) occupied[i] = 1
+        ranges.push({ start: idx, end })
+      }
+      from = idx + 1
+    }
+  }
+
+  return ranges.sort((a, b) => a.start - b.start)
+}
+
+export function findGlossaryMarkRanges(
+  text: string,
+  entries: GlossaryEntry[],
+  lang: string
+): CharRange[] {
+  const terms = collectGlossaryTermsInText(entries, text, lang)
+  return findGlossaryOccurrences(text, terms)
 }
 
 export function findRelevantEntries(

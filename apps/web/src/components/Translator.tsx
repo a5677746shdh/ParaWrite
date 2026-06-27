@@ -4,9 +4,12 @@ import { useShallow } from 'zustand/react/shallow'
 import clsx from 'clsx'
 import {
   combineTextFromRange,
+  normalizeRephraseReplacement,
+  findTokenRangeForText,
   detectSelectionGranularity,
   detectTextLanguage,
-  extractSentenceByWord,
+  extractSentenceForSelection,
+  getSelectionCharOffset,
   replaceTokenRange,
   resolveLayoutMode,
   resolvePaneWidthRatios,
@@ -15,11 +18,8 @@ import {
   splitAlternatives,
   countWordsInRange,
   type AlternativesSeparator,
-  type DictionaryEntry,
   type LayoutMode,
-  type RephraseOption,
   type SelectionGranularity,
-  type SynonymOption,
 } from '@parawrite/core/client'
 import {
   fetchDictionaryContext,
@@ -31,20 +31,14 @@ import {
 import { copyWithExecCommand, canUseClipboardApi, pasteFromClipboard } from '../clipboard'
 import { resolveUiLang } from '../i18n/languages'
 import { translateGuards } from '../lib/translate-guards'
-import {
-  getWordPanelCache,
-  setWordPanelCache,
-  wordPanelCacheKey,
-  clearWordPanelCache,
-} from '../lib/word-panel-cache'
-import { useAutoResizeTextarea } from '../hooks/useAutoResizeTextarea'
+import { GlossarySourceEditor } from './GlossarySourceEditor'
 import { useTranslationStore } from '../store'
 import { TextStats } from './TextStats'
 import { PaneFooter, PANE_FOOTER_MIN_WIDTH, TARGET_PANE_MIN_WIDTH } from './PaneFooter'
 import { TokenEditor } from './TokenEditor'
 import { WordPanel } from './WordPanel'
 import { HistoryPanel } from './HistoryPanel'
-import { textButtonPx, paneIconButtonClass, paneClearIconClass, paneEditorTextClass, panePlaceholderFieldClass, speakActiveButtonClass, wordSelectionCancelButtonClass, paneOutlineAccentButtonClass } from '../ui'
+import { textButtonPx, paneIconButtonClass, paneClearIconClass, speakActiveButtonClass, wordSelectionCancelButtonClass, paneOutlineAccentButtonClass } from '../ui'
 
 /** Responsive breakpoints from meta.layout or defaults; drives three-column / modal / sheet word panel. */
 const DEFAULT_BREAKPOINTS = {
@@ -151,6 +145,7 @@ export function Translator() {
   const handleTranslateRef = useRef<() => Promise<void>>(async () => {})
   const prevSourceForAutoRef = useRef<string | null>(null)
   const prevTargetLangRef = useRef<string | null>(null)
+  const prevUiLangRef = useRef<string>(i18n.language)
   const prevLayoutModeRef = useRef<LayoutMode>('twoColumn')
   const streamBufferRef = useRef('')
   const streamRafRef = useRef<number | null>(null)
@@ -273,7 +268,6 @@ export function Translator() {
     setStreaming(true)
     setError(null)
     setTargetText('')
-    clearWordPanelCache()
     setSelection(null, null)
     setRephraseOptions([])
 
@@ -472,41 +466,33 @@ export function Translator() {
     panelAbortRef.current = controller
     const { signal } = controller
 
-    const granularity = forcedGranularity ?? detectSelectionGranularity(word, targetText)
+    const altSeparator = resolveAlternativesSeparator()
+    const granularity =
+      forcedGranularity ?? detectSelectionGranularity(word, targetText, altSeparator)
     setSelection(word, range, granularity)
     setPanelLoading(true)
     setSynonyms([])
     setDictionary(null)
 
-    const sentence = extractSentenceByWord(targetText, word, targetLang)
+    const selectionOffset = getSelectionCharOffset(targetSegments, range) ?? undefined
+    const sentence = extractSentenceForSelection(
+      targetText,
+      word,
+      targetLang,
+      targetSegments,
+      range
+    )
     const rephraseTarget = resolveRephraseTarget(
       word,
       targetText,
       targetLang,
-      granularity
+      granularity,
+      selectionOffset,
+      altSeparator
     )
-
-    const cacheKey = wordPanelCacheKey({
-      word,
-      range,
-      rephraseTarget,
-      targetText,
-      sourceLang,
-      targetLang,
-      provider,
-      model,
-    })
-    const cachedPanel = getWordPanelCache(cacheKey)
-    if (cachedPanel) {
-      setRephraseOptions(cachedPanel.rephraseOptions, cachedPanel.rephraseOriginalSentence)
-      setSynonyms(cachedPanel.synonyms)
-      setDictionary(cachedPanel.dictionary)
-      setPanelLoading(false)
-      return
-    }
+    const uiLang = resolveUiLang(i18n.language)
 
     setRephraseOptions([], rephraseTarget)
-    const uiLang = resolveUiLang(i18n.language)
     const wordCount = countWordsInRange(targetSegments, range)
     const threshold =
       meta?.phraseWordThresholds?.byLanguage[targetLang] ??
@@ -523,10 +509,6 @@ export function Translator() {
     }
 
     const isStale = () => signal.aborted
-
-    let resolvedSynonyms: SynonymOption[] = []
-    let resolvedDictionary: DictionaryEntry | null = null
-    let resolvedRephrase: RephraseOption[] = []
 
     try {
       const rephrasePromise = fetchRephrase(
@@ -545,8 +527,10 @@ export function Translator() {
                 resolveAlternativesSeparator()
               )
             : rephrase.map((r) => r.text.trim()).filter(Boolean)
-        resolvedRephrase = [...new Set(rephraseTexts)].map((text) => ({ text }))
-        setRephraseOptions(resolvedRephrase, rephraseTarget)
+        setRephraseOptions(
+          [...new Set(rephraseTexts)].map((text) => ({ text })),
+          rephraseTarget
+        )
       })
 
       const extrasPromise = isPhrase
@@ -554,7 +538,6 @@ export function Translator() {
         : Promise.allSettled([
             fetchSynonyms({ word, sentence, ...sharedParams }, signal).then((syns) => {
               if (!isStale()) {
-                resolvedSynonyms = syns
                 setSynonyms(syns)
               }
             }),
@@ -568,22 +551,12 @@ export function Translator() {
               signal
             ).then((dict) => {
               if (!isStale()) {
-                resolvedDictionary = dict
                 setDictionary(dict)
               }
             }),
           ])
 
       await Promise.allSettled([rephrasePromise, extrasPromise])
-
-      if (!isStale()) {
-        setWordPanelCache(cacheKey, {
-          synonyms: resolvedSynonyms,
-          dictionary: resolvedDictionary,
-          rephraseOptions: resolvedRephrase,
-          rephraseOriginalSentence: rephraseTarget,
-        })
-      }
     } catch (err) {
       if (!isStale() && (err as Error).name !== 'AbortError') {
         setError((err as Error).message)
@@ -600,7 +573,9 @@ export function Translator() {
     range: { start: number; end: number },
     forcedGranularity?: SelectionGranularity
   ) => {
-    const granularity = forcedGranularity ?? detectSelectionGranularity(word, targetText)
+    const granularity =
+      forcedGranularity ??
+      detectSelectionGranularity(word, targetText, resolveAlternativesSeparator())
     setSelection(word, range, granularity, true)
     setWordPanelRequested(false)
     abortPanelFetch()
@@ -681,6 +656,23 @@ export function Translator() {
   useEffect(() => () => cancelScheduledWordFetch(), [])
 
   useEffect(() => {
+    if (prevUiLangRef.current === i18n.language) return
+    prevUiLangRef.current = i18n.language
+    if (!selectedWord || !selectedRange) return
+    if (isManualLookup && !wordPanelRequested) return
+
+    abortPanelFetch()
+    setDictionary(null)
+    setSynonyms([])
+    setPanelLoading(true)
+    void fetchWordData(
+      selectedWord,
+      selectedRange,
+      selectionGranularity ?? undefined
+    )
+  }, [i18n.language])
+
+  useEffect(() => {
     if (!isManualLookup) return
     cancelScheduledWordFetch()
     abortPanelFetch()
@@ -707,36 +699,56 @@ export function Translator() {
   const applyRephrase = useCallback(
     (text: string) => {
       if (!selectedWord) return
-      if (selectedRange) {
-        const newText = replaceTokenRange(
-          targetText,
-          targetSegments,
-          selectedRange.start,
-          selectedRange.end,
-          text
-        )
-        setTargetText(newText)
-      } else {
-        const granularity = selectionGranularity ?? 'word'
-        const replaceTarget = resolveRephraseTarget(
+      const granularity = selectionGranularity ?? 'word'
+      const selectionOffset = selectedRange
+        ? getSelectionCharOffset(targetSegments, selectedRange) ?? undefined
+        : undefined
+      const altSeparator = resolveAlternativesSeparator()
+      const replaceTarget =
+        rephraseOriginalSentence ||
+        resolveRephraseTarget(
           selectedWord,
           targetText,
           targetLang,
-          granularity
+          granularity,
+          selectionOffset,
+          altSeparator
         )
-        const newText = targetText.replace(replaceTarget, text)
-        if (newText !== targetText) setTargetText(newText)
+      const rephraseRange = findTokenRangeForText(
+        targetSegments,
+        replaceTarget,
+        selectionOffset
+      )
+      let newText: string
+      if (rephraseRange) {
+        const replacementText = normalizeRephraseReplacement(
+          text,
+          targetSegments,
+          rephraseRange
+        )
+        newText = replaceTokenRange(
+          targetText,
+          targetSegments,
+          rephraseRange.start,
+          rephraseRange.end,
+          replacementText
+        )
+      } else {
+        newText = targetText.replace(replaceTarget, text)
+        if (newText === targetText) return
       }
+      setTargetText(newText)
       setRephraseOptions([])
       setSelection(null, null)
     },
     [
       selectedWord,
-      selectedRange,
       targetText,
       targetSegments,
       selectionGranularity,
       targetLang,
+      rephraseOriginalSentence,
+      meta?.alternativesSeparators,
       setTargetText,
       setRephraseOptions,
       setSelection,
@@ -844,7 +856,10 @@ export function Translator() {
     (!!selectedWord &&
       (!isManualLookup || wordPanelRequested || hasPanelContent))
 
-  const sourceTextareaRef = useAutoResizeTextarea(sourceText, 6, layoutMode)
+  const sourceTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const pointOutGlossary = meta?.pointOutGlossary ?? 'off'
+  const glossaryEntries = meta?.glossaryEntries ?? []
+  const sourceGlossaryLang = sourceLang === 'auto' ? 'auto' : sourceLang
 
   const isSourceEmpty = !sourceText.trim()
 
@@ -881,17 +896,16 @@ export function Translator() {
       )}
     >
       <div className={paneContentClass}>
-        <textarea
-          ref={sourceTextareaRef}
+        <GlossarySourceEditor
+          inputRef={sourceTextareaRef}
           value={sourceText}
-          onChange={(e) => setSourceText(e.target.value)}
+          lang={sourceGlossaryLang}
+          pointOutGlossary={pointOutGlossary}
+          glossaryEntries={glossaryEntries}
+          remeasureKey={layoutMode}
+          onChange={setSourceText}
           onKeyDown={handleSourceKeyDown}
           placeholder={t('sourcePlaceholder')}
-          className={clsx(
-            'block min-h-[6rem] w-full resize-none overflow-hidden border-0 bg-transparent outline-none',
-            paneEditorTextClass,
-            panePlaceholderFieldClass
-          )}
         />
       </div>
       <PaneFooter
@@ -962,6 +976,9 @@ export function Translator() {
           isStreaming={isStreaming}
           selectedRange={selectedRange}
           selectionGranularity={selectionGranularity}
+          alternativesSeparator={resolveAlternativesSeparator()}
+          pointOutGlossary={pointOutGlossary}
+          glossaryEntries={glossaryEntries}
           onTokenClick={handleWordSelect}
           onConsecutiveWordSelect={handleConsecutiveWordSelect}
           onShrinkWordSelect={handleShrinkWordSelect}

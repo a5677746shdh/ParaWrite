@@ -1,6 +1,6 @@
 {
   "name": "@parawrite/core",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -19,7 +19,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "tsc --noEmit",
-    "test": "pnpm run build && node --test dist/layout.test.js dist/user-config.test.js"
+    "test": "pnpm run build && node --test dist/layout.test.js dist/user-config.test.js dist/glossary.test.js dist/segmenter.test.js dist/prompts.test.js"
   },
   "dependencies": {
     "franc": "^6.2.0",

@@ -6,9 +6,17 @@ export { splitAlternatives } from './segmenter.js'
 export { diffHighlight } from './diff.js'
 export { isValidUsername, sanitizeUsernameInput } from './username.js'
 export { resolvePaneWidthRatios } from './layout.js'
+export {
+  collectGlossaryTermsInText,
+  findGlossaryMarkRanges,
+  findGlossaryOccurrences,
+} from './glossary.js'
+export type { CharRange } from './glossary.js'
 export type { PaneWidthRatioResult, PublicPaneWidthRatios } from './types.js'
 export type {
   AlternativesSeparator,
+  GlossaryEntry,
+  PointOutGlossaryMode,
   HistoryPageResult,
   PublicMeta,
   PublicUserSummary,

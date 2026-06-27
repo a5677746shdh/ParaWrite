@@ -2,7 +2,7 @@
  * Text segmentation for word-level interaction in the target pane.
  * Uses Intl.Segmenter when available (cached per locale); clause/sentence splits use punctuation rules.
  */
-import type { TokenSegment } from './types.js'
+import type { AlternativesSeparator, TokenSegment } from './types.js'
 
 type IntlSegmenter = {
   segment: (text: string) => Iterable<{ segment: string; isWordLike?: boolean }>
@@ -90,22 +90,88 @@ export function replaceTokenRange(
   return result
 }
 
+const CLAUSE_PUNCT_CLASS = ',，、;；:：'
+const SENTENCE_END_PUNCT_CLASS = '.。．!?！？…'
+
+function charClassFrom(chars: string): string {
+  const body = [...chars]
+    .map((char) => {
+      if (char === '-' || char === ']' || char === '\\') return `\\${char}`
+      return char
+    })
+    .join('')
+  return `[${body}]`
+}
+
+const CLAUSE_PUNCT_ONLY = charClassFrom(CLAUSE_PUNCT_CLASS)
+const SENTENCE_END_PUNCT_ONLY = charClassFrom(SENTENCE_END_PUNCT_CLASS)
+
+const CLAUSE_PUNCT_TEST = new RegExp(CLAUSE_PUNCT_ONLY, 'u')
+const SENTENCE_END_PUNCT_TEST = new RegExp(SENTENCE_END_PUNCT_ONLY, 'u')
+const CLAUSE_PUNCT_RUN = new RegExp(`${CLAUSE_PUNCT_ONLY}+`, 'u')
+const SENTENCE_END_PUNCT_RUN = new RegExp(`${SENTENCE_END_PUNCT_ONLY}+`, 'u')
+
+const SENTENCE_END_SPLIT = new RegExp(`(${SENTENCE_END_PUNCT_ONLY}+)`, 'u')
+const COMMA_MODE_CLAUSE_SPLIT = new RegExp(
+  `(${CLAUSE_PUNCT_ONLY}+|${SENTENCE_END_PUNCT_ONLY}+)`,
+  'u'
+)
+
+function clauseSplitPattern(separator: AlternativesSeparator): RegExp {
+  return separator === 'period' ? SENTENCE_END_SPLIT : COMMA_MODE_CLAUSE_SPLIT
+}
+
+function isClauseDelimiter(part: string, separator: AlternativesSeparator): boolean {
+  if (!part) return false
+  if (separator === 'period') return SENTENCE_END_PUNCT_RUN.test(part)
+  return CLAUSE_PUNCT_RUN.test(part) || SENTENCE_END_PUNCT_RUN.test(part)
+}
+
+/** Drop trailing punctuation from a rephrase alternative when it would duplicate boundary punct in the surrounding text. */
+export function normalizeRephraseReplacement(
+  replacement: string,
+  segments: TokenSegment[],
+  range: { start: number; end: number }
+): string {
+  const followingText = segments
+    .filter((s) => s.index > range.end)
+    .map((s) => s.text)
+    .join('')
+  const followingLead = followingText.trimStart()
+  if (!followingLead) return replacement.trimEnd()
+
+  let normalized = replacement.trimEnd()
+  const nextChar = followingLead[0] ?? ''
+  const lastChar = normalized[normalized.length - 1] ?? ''
+
+  if (CLAUSE_PUNCT_TEST.test(nextChar) && SENTENCE_END_PUNCT_TEST.test(lastChar)) {
+    normalized = normalized.replace(new RegExp(`${SENTENCE_END_PUNCT_ONLY}+$`, 'u'), '').trimEnd()
+  }
+
+  const trimmedLast = normalized[normalized.length - 1] ?? ''
+  if (CLAUSE_PUNCT_TEST.test(trimmedLast) && CLAUSE_PUNCT_TEST.test(nextChar)) {
+    normalized = normalized.replace(new RegExp(`${CLAUSE_PUNCT_ONLY}+$`, 'u'), '').trimEnd()
+  }
+
+  return normalized
+}
+
 export function countWords(text: string, lang: string): number {
   if (!text.trim()) return 0
   const segments = segmentText(text, lang)
   return segments.filter((s) => s.isWord).length
 }
 
-const SENTENCE_SPLIT = /([。.!?！？]+)/
-const CLAUSE_SPLIT = /([，,、;；]+)/
-
-export function splitIntoClauses(text: string): string[] {
+export function splitIntoClauses(
+  text: string,
+  separator: AlternativesSeparator = 'comma'
+): string[] {
   if (!text.trim()) return []
-  const parts = text.split(CLAUSE_SPLIT)
+  const parts = text.split(clauseSplitPattern(separator))
   const clauses: string[] = []
   let current = ''
   for (const part of parts) {
-    if (/^[，,、;；]+$/.test(part)) {
+    if (isClauseDelimiter(part, separator)) {
       current += part
       if (current.trim()) clauses.push(current.trim())
       current = ''
@@ -119,11 +185,11 @@ export function splitIntoClauses(text: string): string[] {
 
 export function splitIntoSentences(text: string): string[] {
   if (!text.trim()) return []
-  const parts = text.split(SENTENCE_SPLIT)
+  const parts = text.split(SENTENCE_END_SPLIT)
   const sentences: string[] = []
   let current = ''
   for (const part of parts) {
-    if (/^[。.!?！？]+$/.test(part)) {
+    if (SENTENCE_END_PUNCT_RUN.test(part)) {
       current += part
       if (current.trim()) sentences.push(current.trim())
       current = ''
@@ -138,12 +204,90 @@ export function splitIntoSentences(text: string): string[] {
 export function extractClauseByWord(
   text: string,
   word: string,
-  _lang: string
+  _lang: string,
+  separator: AlternativesSeparator = 'comma'
 ): string {
-  const clauses = splitIntoClauses(text)
+  const clauses = splitIntoClauses(text, separator)
   const trimmedWord = word.trim()
   const found = clauses.find((c) => c.includes(trimmedWord))
   return found ?? extractSentenceByWord(text, word, _lang)
+}
+
+function locateSpanInText(
+  text: string,
+  span: string,
+  searchFrom: number
+): { start: number; end: number } | null {
+  const needle = span.trim()
+  if (!needle) return null
+  const idx = text.indexOf(needle, searchFrom)
+  if (idx === -1) return null
+  return { start: idx, end: idx + needle.length }
+}
+
+export function getSelectionCharOffset(
+  segments: TokenSegment[],
+  range: { start: number; end: number }
+): number | null {
+  let offset = 0
+  for (const seg of segments) {
+    if (seg.index === range.start) return offset
+    offset += seg.text.length
+  }
+  return null
+}
+
+export function extractClauseAtOffset(
+  text: string,
+  offset: number,
+  separator: AlternativesSeparator = 'comma'
+): string {
+  const clauses = splitIntoClauses(text, separator)
+  let searchFrom = 0
+  for (const clause of clauses) {
+    const located = locateSpanInText(text, clause, searchFrom)
+    if (!located) continue
+    if (offset >= located.start && offset < located.end) return clause
+    searchFrom = located.end
+  }
+  return extractSentenceAtOffset(text, offset)
+}
+
+export function extractSentenceAtOffset(text: string, offset: number): string {
+  const sentences = splitIntoSentences(text)
+  let searchFrom = 0
+  for (const sentence of sentences) {
+    const located = locateSpanInText(text, sentence, searchFrom)
+    if (!located) continue
+    if (offset >= located.start && offset < located.end) return sentence
+    searchFrom = located.end
+  }
+  return text.trim()
+}
+
+export function extractClauseForSelection(
+  text: string,
+  word: string,
+  lang: string,
+  segments: TokenSegment[],
+  range: { start: number; end: number },
+  separator: AlternativesSeparator = 'comma'
+): string {
+  const offset = getSelectionCharOffset(segments, range)
+  if (offset !== null) return extractClauseAtOffset(text, offset, separator)
+  return extractClauseByWord(text, word, lang, separator)
+}
+
+export function extractSentenceForSelection(
+  text: string,
+  word: string,
+  lang: string,
+  segments: TokenSegment[],
+  range: { start: number; end: number }
+): string {
+  const offset = getSelectionCharOffset(segments, range)
+  if (offset !== null) return extractSentenceAtOffset(text, offset)
+  return extractSentenceByWord(text, word, lang)
 }
 
 export function extractSentenceByWord(
@@ -160,27 +304,39 @@ export function extractSentenceByWord(
 export type SelectionGranularity = 'word' | 'clause' | 'sentence'
 
 export function normalizeClauseText(text: string): string {
-  return text.trim().replace(/^[,，、;；\s]+|[,，、;；]+$/g, '').trim()
+  return text
+    .trim()
+    .replace(new RegExp(`^${CLAUSE_PUNCT_ONLY}+\\s*|\\s*${CLAUSE_PUNCT_ONLY}+$`, 'gu'), '')
+    .trim()
 }
 
 export function resolveRephraseTarget(
   word: string,
   targetText: string,
   targetLang: string,
-  granularity: SelectionGranularity
+  granularity: SelectionGranularity,
+  selectionOffset?: number,
+  separator: AlternativesSeparator = 'comma'
 ): string {
   if (granularity === 'sentence') {
-    return extractSentenceByWord(targetText, word, targetLang)
+    return selectionOffset !== undefined
+      ? extractSentenceAtOffset(targetText, selectionOffset)
+      : extractSentenceByWord(targetText, word, targetLang)
   }
   if (granularity === 'clause') {
     return normalizeClauseText(word)
   }
-  return normalizeClauseText(extractClauseByWord(targetText, word, targetLang))
+  const clause =
+    selectionOffset !== undefined
+      ? extractClauseAtOffset(targetText, selectionOffset, separator)
+      : extractClauseByWord(targetText, word, targetLang, separator)
+  return normalizeClauseText(clause)
 }
 
 export function detectSelectionGranularity(
   selectedText: string,
-  fullText: string
+  fullText: string,
+  separator: AlternativesSeparator = 'comma'
 ): SelectionGranularity {
   const trimmed = selectedText.trim()
   if (!trimmed) return 'word'
@@ -188,7 +344,7 @@ export function detectSelectionGranularity(
   const sentences = splitIntoSentences(fullText)
   if (sentences.some((s) => s.trim() === trimmed)) return 'sentence'
 
-  const clauses = splitIntoClauses(fullText)
+  const clauses = splitIntoClauses(fullText, separator)
   if (clauses.some((c) => normalizeClauseText(c) === normalizeClauseText(trimmed))) {
     return 'clause'
   }
@@ -310,30 +466,58 @@ export function shrinkWordRange(
 
 export function findTokenRangeForText(
   segments: TokenSegment[],
-  selectedText: string
+  selectedText: string,
+  nearCharOffset?: number
 ): { start: number; end: number } | null {
   const trimmed = selectedText.trim()
   if (!trimmed || segments.length === 0) return null
+
+  const matches: Array<{ start: number; end: number; charOffset: number }> = []
 
   for (let start = 0; start < segments.length; start++) {
     let combined = ''
     for (let end = start; end < segments.length; end++) {
       combined += segments[end].text
       if (combined.trim() === trimmed) {
-        return { start: segments[start].index, end: segments[end].index }
+        const charOffset = getSelectionCharOffset(segments, {
+          start: segments[start].index,
+          end: segments[start].index,
+        })
+        matches.push({
+          start: segments[start].index,
+          end: segments[end].index,
+          charOffset: charOffset ?? 0,
+        })
       }
       if (combined.trim().length > trimmed.length + 20) break
     }
   }
 
-  return null
+  if (matches.length === 0) return null
+  if (nearCharOffset === undefined || matches.length === 1) {
+    return { start: matches[0].start, end: matches[0].end }
+  }
+
+  let best = matches[0]
+  let bestDistance = Math.abs(best.charOffset - nearCharOffset)
+  for (const match of matches.slice(1)) {
+    const distance = Math.abs(match.charOffset - nearCharOffset)
+    if (distance < bestDistance) {
+      best = match
+      bestDistance = distance
+    }
+  }
+  return { start: best.start, end: best.end }
 }
 
 export function splitAlternatives(
   texts: string[],
   separator: 'comma' | 'period' = 'comma'
 ): string[] {
-  const pattern = separator === 'comma' ? /[,，、;；]+/ : /[。.!?！？]+/
+  const pattern =
+    separator === 'comma'
+      ? new RegExp(`${CLAUSE_PUNCT_ONLY}|${SENTENCE_END_PUNCT_ONLY}+`, 'gu')
+      : new RegExp(`${SENTENCE_END_PUNCT_ONLY}+`, 'gu')
   const result: string[] = []
   for (const text of texts) {
     const parts = text.split(pattern).map((p) => p.trim()).filter(Boolean)

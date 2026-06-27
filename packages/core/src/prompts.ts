@@ -72,11 +72,18 @@ export function buildDictionaryContextPrompt(
   sourceText: string,
   sourceLang: string,
   targetLang: string,
-  definitionLang: string
+  definitionLang: string,
+  showExamples: boolean
 ): { system: string; user: string } {
   const targetName = getLangName(targetLang)
   const definitionName = getLangName(definitionLang)
   const bilingual = definitionLang !== targetLang
+
+  const exampleRules = showExamples
+    ? `Each "example" must be a new standalone sentence illustrating word usage in ${targetName}. Do not repeat, quote, or paraphrase the Source or Translation text above.
+
+Return JSON: {"word":"...","phonetic":"...","meanings":[{"partOfSpeech":"...","definition":"...","example":"..."}]}`
+    : `Return JSON: {"word":"...","phonetic":"...","meanings":[{"partOfSpeech":"...","definition":"..."}]}`
 
   return {
     system: `You are a bilingual dictionary assistant. Explain words in context. Respond with valid JSON only.`,
@@ -86,7 +93,7 @@ Word: "${word}"
 Word language: ${targetName}
 ${bilingual ? `Write all definitions and notes in ${definitionName} (bilingual dictionary style).` : `Write all definitions in ${targetName}.`}
 
-Return JSON: {"word":"...","phonetic":"...","meanings":[{"partOfSpeech":"...","definition":"...","example":"..."}]}`,
+${exampleRules}`,
   }
 }
 
