@@ -4,7 +4,7 @@
 
 ParaWrite is an open-source writing assistant inspired by DeepL's "Alternatives" feature. Translate text with streaming LLM output, then refine the result with context-aware synonyms, dictionary lookups, and sentence rephrasing.
 
-**Version 0.6.2** — see [CHANGELOG.md](CHANGELOG.md) · [中文更新日志](CHANGELOG.zh-CN.md).
+**Version 1.0.0** — first public release. See [CHANGELOG.md](CHANGELOG.md) · [中文更新日志](CHANGELOG.zh-CN.md).
 
 ## Screenshots
 

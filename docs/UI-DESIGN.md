@@ -27,7 +27,8 @@ Opacity variants on primary text use `text-deepl-blue/60`, `/70` for labels and 
 |---------|---------|
 | App title | `text-2xl font-bold text-deepl-blue` |
 | Section / dialog title | `text-lg font-semibold text-deepl-blue` |
-| Body, controls | `text-sm` |
+| Body, buttons, labels | `text-sm` |
+| Form inputs and selects | `text-base` (16px minimum — avoids iOS Safari zoom on focus) |
 | Source / target editor text | `text-lg leading-relaxed` |
 | Stats, version, hints | `text-xs` |
 | Panel section labels | `text-sm font-semibold uppercase tracking-wide` |
@@ -222,14 +223,20 @@ New icons should follow the same pattern: one button element, shared shell class
 
 ## Forms
 
+Shared field classes live in `apps/web/src/ui.ts` (`formInputClass`, `formSelectClass`).
+
+**iOS Safari:** inputs and selects must use at least **16px** font size (`text-base`). Smaller text triggers automatic page zoom on focus. Labels and helper copy may stay at `text-sm` (14px); only interactive fields need the minimum.
+
 - Label: `text-sm font-medium text-deepl-blue/70`
-- Input: `rounded-lg border border-deepl-border px-3 py-2 outline-none focus:border-deepl-accent`
+- Input: `formInputClass` — `text-base`, `rounded-lg border border-deepl-border px-3 py-2 outline-none focus:border-deepl-accent`
 - Error state: `border-deepl-error/40` or `bg-deepl-error/10 text-deepl-error`
 
 ## Selects
 
+Use `formSelectClass` from `apps/web/src/ui.ts`:
+
 ```
-h-10 rounded-lg border border-deepl-border bg-white px-3 py-2 text-sm focus:border-deepl-accent
+h-10 rounded-lg border border-deepl-border bg-white px-3 py-0 text-base leading-10 focus:border-deepl-accent
 ```
 
 ## Screenshots

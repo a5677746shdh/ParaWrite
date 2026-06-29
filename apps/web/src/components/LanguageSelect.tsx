@@ -1,4 +1,5 @@
 import { SUPPORTED_LANGUAGES } from '@parawrite/core/client'
+import { formSelectClass } from '../ui'
 
 interface LanguageSelectProps {
   value: string
@@ -23,7 +24,7 @@ export function LanguageSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 rounded-lg border border-deepl-border bg-white px-3 py-0 text-sm leading-10 text-deepl-blue outline-none focus:border-deepl-accent"
+        className={formSelectClass}
       >
         {languages.map((lang) => (
           <option key={lang.code} value={lang.code}>

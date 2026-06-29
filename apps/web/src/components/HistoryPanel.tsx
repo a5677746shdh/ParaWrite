@@ -10,7 +10,7 @@ import {
 } from '../api'
 import { useTranslationStore } from '../store'
 import { UserAuthDialog } from './UserAuthDialog'
-import { textButtonPx } from '../ui'
+import { textButtonPx, formInputClass } from '../ui'
 
 function FavoriteIcon({ filled }: { filled: boolean }) {
   return (
@@ -328,7 +328,7 @@ export function HistoryPanel() {
                       }
                     }}
                     aria-label={t('historyPageJumpLabel')}
-                    className="border-0 bg-transparent p-0 text-center text-deepl-blue outline-none"
+                    className={clsx(formInputClass, 'border-0 bg-transparent p-0 text-center outline-none')}
                     style={{ width: `${Math.max(1, pageInput.length || 1)}ch` }}
                   />
                   <span className="whitespace-nowrap text-deepl-muted"> / {totalPages}</span>

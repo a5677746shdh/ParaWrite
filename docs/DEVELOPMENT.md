@@ -56,7 +56,7 @@ These paths are listed in `.gitignore`. They are **not** part of the published r
 - **Imports** in server/core use `.js` extensions for Node ESM resolution
 - **Shared types** live in `packages/core`; web imports browser-safe exports from `@parawrite/core/client`
 - **Config paths** in YAML resolve relative to the app root (parent of `config/`)
-- **Styling:** Tailwind CSS with `deepl-*` semantic tokens; see [UI-DESIGN.md](UI-DESIGN.md) (including [button icons](UI-DESIGN.md#button-icons))
+- **Styling:** Tailwind CSS with `deepl-*` semantic tokens; see [UI-DESIGN.md](UI-DESIGN.md) (including [button icons](UI-DESIGN.md#button-icons) and the [16px minimum for form fields](UI-DESIGN.md#forms) on iOS)
 
 ## Adding a provider
 

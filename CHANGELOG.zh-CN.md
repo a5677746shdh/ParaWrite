@@ -4,6 +4,17 @@
 
 ## [未发布]
 
+## [1.0.0] — 2026-06-28
+
+ParaWrite 首个公开发布版本。
+
+### 新增
+- 共享表单样式常量（`formInputClass`、`formSelectClass`，位于 `apps/web/src/ui.ts`）
+
+### 变更
+- 表单输入框与下拉框统一至少 16px（`text-base`），避免 iOS Safari 聚焦时自动放大页面
+- [UI-DESIGN.md](docs/UI-DESIGN.md) 补充交互控件 16px 下限说明；[DEVELOPMENT.md](docs/DEVELOPMENT.md) 增加相关链接
+
 ## [0.8.2] — 2026-06-27
 
 ### 新增

@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { loginUser, registerUser } from '../api'
 import { isValidUsername, sanitizeUsernameInput } from '@parawrite/core/client'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
-import { textButtonPx } from '../ui'
+import { textButtonPx, formInputClass } from '../ui'
 
 interface UserAuthDialogProps {
   open: boolean
@@ -147,7 +147,7 @@ export function UserAuthDialog({
                 }
               }}
               autoComplete="username"
-              className="rounded-lg border border-deepl-border px-3 py-2 outline-none focus:border-deepl-accent"
+              className={formInputClass}
             />
             {tab === 'register' && showUsernameHint && (
               <span className="text-xs text-deepl-muted">{t('userAuthUsernameHint')}</span>
@@ -161,7 +161,7 @@ export function UserAuthDialog({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
-              className="rounded-lg border border-deepl-border px-3 py-2 outline-none focus:border-deepl-accent"
+              className={formInputClass}
             />
           </label>
 
@@ -173,7 +173,7 @@ export function UserAuthDialog({
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 autoComplete="nickname"
-                className="rounded-lg border border-deepl-border px-3 py-2 outline-none focus:border-deepl-accent"
+                className={formInputClass}
               />
             </label>
           )}

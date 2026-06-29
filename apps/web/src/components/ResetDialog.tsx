@@ -6,7 +6,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { UI_LANGUAGES, isUiLanguageCode } from '../i18n/languages'
 import { applyUiLanguage } from '../lib/ui-language'
 import { useTranslationStore } from '../store'
-import { textButtonPx } from '../ui'
+import { textButtonPx, formInputClass, formSelectClass } from '../ui'
 
 function formatVersionDisplay(version: string, runtimeEnv?: string): string {
   const displayVersion = version.replace('+', '.')
@@ -154,8 +154,7 @@ export function ResetDialog({
   const actionButtonClass =
     `rounded-lg ${textButtonPx} py-2.5 text-center text-sm hover:bg-deepl-light`
 
-  const selectClass =
-    'h-10 flex-1 rounded-lg border border-deepl-border bg-white px-3 py-0 text-sm leading-10 outline-none focus:border-deepl-accent'
+  const selectClass = clsx(formSelectClass, 'flex-1')
 
   const rememberButtonClass =
     'flex h-10 w-[4.875rem] shrink-0 items-center justify-center rounded-lg border border-deepl-border text-sm text-deepl-blue hover:bg-deepl-light'
@@ -262,8 +261,9 @@ export function ResetDialog({
                     onChange={(e) => handleTotpChange(e.target.value)}
                     placeholder="000000"
                     className={clsx(
-                      'rounded-lg border px-3 py-2 text-center tracking-widest outline-none focus:border-deepl-accent',
-                      restartError ? 'border-deepl-error/40' : 'border-deepl-border'
+                      formInputClass,
+                      'text-center tracking-widest',
+                      restartError ? 'border-deepl-error/40' : ''
                     )}
                   />
                 </label>

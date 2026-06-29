@@ -4,6 +4,17 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-06-28
+
+First public release of ParaWrite.
+
+### Added
+- Shared form field classes (`formInputClass`, `formSelectClass`) in `apps/web/src/ui.ts`
+
+### Changed
+- Form inputs and selects use at least 16px (`text-base`) to prevent iOS Safari auto-zoom on focus
+- [UI-DESIGN.md](docs/UI-DESIGN.md) documents the 16px minimum for interactive fields; [DEVELOPMENT.md](docs/DEVELOPMENT.md) links to it
+
 ## [0.8.2] — 2026-06-27
 
 ### Added

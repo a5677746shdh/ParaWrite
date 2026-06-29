@@ -4,6 +4,14 @@ export const textButtonPx = 'px-6'
 /** Source/target pane editor body text. */
 export const paneEditorTextClass = 'text-lg leading-relaxed text-deepl-blue'
 
+/** Form `<input>` — at least 16px (`text-base`) to avoid iOS Safari zoom on focus. */
+export const formInputClass =
+  'rounded-lg border border-deepl-border px-3 py-2 text-base outline-none focus:border-deepl-accent'
+
+/** Form `<select>` — at least 16px (`text-base`) to avoid iOS Safari zoom on focus. */
+export const formSelectClass =
+  'h-10 rounded-lg border border-deepl-border bg-white px-3 py-0 text-base leading-10 text-deepl-blue outline-none focus:border-deepl-accent'
+
 /** Empty source/target pane hint (muted placeholder). */
 export const panePlaceholderClass = 'text-deepl-muted'
 

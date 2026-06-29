@@ -5,11 +5,9 @@ import { useTranslationStore } from '../store'
 import { LanguageSelect } from './LanguageSelect'
 import { ResetDialog } from './ResetDialog'
 import { AutoSwapIcon } from '../icons/AutoSwapIcon'
+import { formSelectClass } from '../ui'
 
 const PROVIDER_MODEL_SEP = '::'
-
-const selectClass =
-  'h-10 rounded-lg border border-deepl-border bg-white px-3 py-0 text-sm leading-10 text-deepl-blue outline-none focus:border-deepl-accent'
 
 const PROVIDER_SELECT_MIN_WIDTH = 120
 const PROVIDER_SELECT_MAX_WIDTH = 320
@@ -213,14 +211,14 @@ export function Header() {
                   <span
                     ref={providerMeasureRef}
                     aria-hidden
-                    className="pointer-events-none invisible absolute whitespace-nowrap text-sm leading-10"
+                    className="pointer-events-none invisible absolute whitespace-nowrap text-base leading-10"
                   >
                     {providerModelLabel}
                   </span>
                   <select
                     value={providerModelValue}
                     onChange={(e) => handleProviderModelChange(e.target.value)}
-                    className={selectClass}
+                    className={formSelectClass}
                     style={{ width: providerSelectWidth }}
                   >
                     {providerModelOptions.map((opt) => (
