@@ -30,6 +30,7 @@ app:
   rephrase_hover_preview_enabled: false
   rephrase_hover_preview_delay_ms: 800
   rephrase_back_translation_preload: off
+  point_out_glossary: off
 
 providers:
   DeepSeek:
@@ -49,7 +50,6 @@ dictionary:
 
 glossary:
   file: config/glossary.yaml
-  point_out_glossary: off
 
 pwa:
   assetlinks_file: config/assetlinks.json
@@ -92,3 +92,4 @@ theme:
   error: '#dc2626'
   warning: '#f59e0b'
   alert: '#ea580c'
+  icon_button: '#4a6280'

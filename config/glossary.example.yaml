@@ -1,6 +1,7 @@
 # Global glossary — domain-specific translations per language (ISO 639-1 keys).
 # Copy to config/glossary.yaml and edit locally.
 # Each entry maps the same concept across languages; matched terms are injected into the translation prompt.
+# Use `other` as a fallback when a target language is not listed for an entry.
 
 entries:
   - translations:
@@ -13,3 +14,7 @@ entries:
       en: Thank you
       fr: Merci
       de: Danke
+  - translations:
+      zh: 拓竹
+      en: Bambu
+      other: Bambu   # used for fr, de, ja, … when not listed above

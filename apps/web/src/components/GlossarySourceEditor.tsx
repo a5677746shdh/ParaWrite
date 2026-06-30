@@ -38,7 +38,7 @@ export const GlossarySourceEditor = memo(function GlossarySourceEditor({
     if (inputRef) {
       inputRef.current = textareaRef.current
     }
-  }, [inputRef, textareaRef, value])
+  }, [inputRef, textareaRef])
 
   const ranges = useMemo(() => {
     if (pointOutGlossary === 'off' || glossaryEntries.length === 0 || !value) {

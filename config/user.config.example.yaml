@@ -4,6 +4,9 @@
 app:
   auto_translate_delay_seconds: 1
   translate_on_enter: true
+  # point_out_glossary: full   # optional: off | first | full
+  # language_order: [zh, en, ja, auto]
+  # target_language_order: [en, zh, ja]
 
 theme:
   primary: '#1a2b3c'

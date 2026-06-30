@@ -40,9 +40,6 @@ CREATE TABLE IF NOT EXISTS translation_history (
 CREATE INDEX IF NOT EXISTS idx_history_user_time
   ON translation_history(user_id, created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_history_dedup
-  ON translation_history(user_id, source_lang, target_lang, source_text, target_lang);
-
 CREATE INDEX IF NOT EXISTS idx_history_dedup_target
   ON translation_history(user_id, source_lang, target_lang, source_text, target_text);
 
@@ -58,6 +55,7 @@ export function openDatabase(dataDir: string): Database.Database {
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
   db.exec(SCHEMA)
+  db.exec('DROP INDEX IF EXISTS idx_history_dedup')
   return db
 }
 

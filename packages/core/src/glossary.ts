@@ -2,15 +2,16 @@ import fs from 'node:fs'
 import path from 'node:path'
 import yaml from 'js-yaml'
 import type { GlossaryEntry, PointOutGlossaryMode } from './types.js'
+import {
+  GLOSSARY_FALLBACK_KEY,
+  buildGlossaryPromptSection,
+  findRelevantEntries,
+  mergeGlossaryEntries,
+  resolveSourceLangForGlossary,
+} from './glossary-mark.js'
 
-export type { GlossaryEntry, PointOutGlossaryMode }
-
-export interface CharRange {
-  /** Inclusive start index in text */
-  start: number
-  /** Exclusive end index */
-  end: number
-}
+export * from './glossary-mark.js'
+export type { PointOutGlossaryMode }
 
 interface GlossaryFile {
   entries?: Array<{
@@ -18,13 +19,17 @@ interface GlossaryFile {
   }>
 }
 
+function isGlossaryLanguageKey(key: string): boolean {
+  return key !== GLOSSARY_FALLBACK_KEY
+}
+
 function parseGlossaryFile(raw: string): GlossaryEntry[] {
   const parsed = yaml.load(raw) as GlossaryFile
   const entries: GlossaryEntry[] = []
 
   for (const entry of parsed.entries ?? []) {
-    if (!entry.translations || Object.keys(entry.translations).length < 2) {
-      console.warn('[parawrite] Skipping glossary entry with fewer than 2 languages')
+    if (!entry.translations) {
+      console.warn('[parawrite] Skipping glossary entry without translations')
       continue
     }
 
@@ -35,9 +40,19 @@ function parseGlossaryFile(raw: string): GlossaryEntry[] {
       }
     }
 
-    if (Object.keys(translations).length >= 2) {
-      entries.push({ translations })
+    const languageKeys = Object.keys(translations).filter(isGlossaryLanguageKey)
+    const hasFallback = GLOSSARY_FALLBACK_KEY in translations
+    const isValid =
+      languageKeys.length >= 2 || (languageKeys.length >= 1 && hasFallback)
+
+    if (!isValid) {
+      console.warn(
+        '[parawrite] Skipping glossary entry: need at least two languages or one language plus "other"'
+      )
+      continue
     }
+
+    entries.push({ translations })
   }
 
   return entries
@@ -63,168 +78,6 @@ export function loadGlossary(appRoot: string, fileName: string): GlossaryEntry[]
 
 export function loadUserGlossary(filePath: string): GlossaryEntry[] {
   return loadGlossaryFromPath(filePath)
-}
-
-function entryConflictKeys(entry: GlossaryEntry): string[] {
-  return Object.entries(entry.translations).map(([lang, term]) => `${lang}:${term}`)
-}
-
-/** User entries override global entries that share any lang:term pair. */
-export function mergeGlossaryEntries(
-  base: GlossaryEntry[],
-  override: GlossaryEntry[]
-): GlossaryEntry[] {
-  if (override.length === 0) return base
-
-  const overrideKeys = new Set<string>()
-  for (const entry of override) {
-    for (const key of entryConflictKeys(entry)) {
-      overrideKeys.add(key)
-    }
-  }
-
-  const filtered = base.filter((entry) => {
-    const keys = entryConflictKeys(entry)
-    return !keys.some((key) => overrideKeys.has(key))
-  })
-
-  return [...filtered, ...override]
-}
-
-/** Collect glossary terms that appear in `text` for the given language (`auto` checks all translations). */
-export function collectGlossaryTermsInText(
-  entries: GlossaryEntry[],
-  text: string,
-  lang: string
-): string[] {
-  if (!text || entries.length === 0) return []
-
-  const terms: string[] = []
-  for (const entry of entries) {
-    if (lang === 'auto') {
-      for (const term of Object.values(entry.translations)) {
-        if (term && text.includes(term)) terms.push(term)
-      }
-    } else {
-      const term = entry.translations[lang]
-      if (term && text.includes(term)) terms.push(term)
-    }
-  }
-  return terms
-}
-
-/** Find non-overlapping glossary term occurrences; longer terms take priority. */
-export function findGlossaryOccurrences(text: string, terms: string[]): CharRange[] {
-  if (!text || terms.length === 0) return []
-
-  const unique = [...new Set(terms.filter((t) => t.length > 0))].sort(
-    (a, b) => b.length - a.length
-  )
-  const occupied = new Uint8Array(text.length)
-  const ranges: CharRange[] = []
-
-  for (const term of unique) {
-    let from = 0
-    while (from <= text.length - term.length) {
-      const idx = text.indexOf(term, from)
-      if (idx === -1) break
-      const end = idx + term.length
-      let overlaps = false
-      for (let i = idx; i < end; i++) {
-        if (occupied[i]) {
-          overlaps = true
-          break
-        }
-      }
-      if (!overlaps) {
-        for (let i = idx; i < end; i++) occupied[i] = 1
-        ranges.push({ start: idx, end })
-      }
-      from = idx + 1
-    }
-  }
-
-  return ranges.sort((a, b) => a.start - b.start)
-}
-
-export function findGlossaryMarkRanges(
-  text: string,
-  entries: GlossaryEntry[],
-  lang: string
-): CharRange[] {
-  const terms = collectGlossaryTermsInText(entries, text, lang)
-  return findGlossaryOccurrences(text, terms)
-}
-
-export function findRelevantEntries(
-  entries: GlossaryEntry[],
-  sourceText: string,
-  sourceLang: string
-): GlossaryEntry[] {
-  const matched: Array<{ entry: GlossaryEntry; termLength: number; matchedLang: string }> = []
-
-  for (const entry of entries) {
-    if (sourceLang === 'auto') {
-      for (const [lang, term] of Object.entries(entry.translations)) {
-        if (term && sourceText.includes(term)) {
-          matched.push({ entry, termLength: term.length, matchedLang: lang })
-          break
-        }
-      }
-    } else {
-      const sourceTerm = entry.translations[sourceLang]
-      if (sourceTerm && sourceText.includes(sourceTerm)) {
-        matched.push({ entry, termLength: sourceTerm.length, matchedLang: sourceLang })
-      }
-    }
-  }
-
-  matched.sort((a, b) => b.termLength - a.termLength)
-  return matched.map((m) => m.entry)
-}
-
-export function resolveSourceLangForGlossary(
-  entries: GlossaryEntry[],
-  sourceText: string,
-  sourceLang: string
-): string | null {
-  if (sourceLang !== 'auto') return sourceLang
-
-  let best: { lang: string; length: number } | null = null
-  for (const entry of entries) {
-    for (const [lang, term] of Object.entries(entry.translations)) {
-      if (term && sourceText.includes(term)) {
-        if (!best || term.length > best.length) {
-          best = { lang, length: term.length }
-        }
-      }
-    }
-  }
-  return best?.lang ?? null
-}
-
-export function buildGlossaryPromptSection(
-  entries: GlossaryEntry[],
-  sourceLang: string,
-  targetLang: string
-): string {
-  if (entries.length === 0) return ''
-
-  const lines = entries
-    .map((entry) => {
-      const sourceTerm = entry.translations[sourceLang]
-      const targetTerm = entry.translations[targetLang]
-      if (!sourceTerm || !targetTerm) return null
-      return `- "${sourceTerm}" → "${targetTerm}"`
-    })
-    .filter(Boolean)
-
-  if (lines.length === 0) return ''
-
-  return (
-    'Use these mandatory translations when the source contains the listed terms:\n' +
-    lines.join('\n')
-  )
 }
 
 export class GlossaryService {

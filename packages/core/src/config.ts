@@ -20,8 +20,9 @@ import type {
   RephraseBackTranslationPreload,
   PointOutGlossaryMode,
 } from './types.js'
-import { BUILD_VERSION } from './version.generated.js'
+import { normalizeLanguageOrder } from './languages.js'
 import { getPaneWidthRatiosMeta } from './layout.js'
+import { BUILD_VERSION } from './version.generated.js'
 
 const DEFAULT_THREE_COLUMN_MIN = 1280
 const DEFAULT_TWO_COLUMN_MIN = 768
@@ -38,6 +39,7 @@ const DEFAULT_THEME: ThemeColors = {
   error: '#dc2626',
   warning: '#f59e0b',
   alert: '#ea580c',
+  icon_button: '#4a6280',
 }
 
 const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/
@@ -186,10 +188,12 @@ export function getAlternativesSeparatorsMeta(config: AppConfig) {
   }
 }
 
+const DEFAULT_PHRASE_WORD_THRESHOLD = 4
+
 export function getPhraseWordThresholdsMeta(config: AppConfig) {
   const thresholdConfig = config.app.phrase_word_threshold
   return {
-    default: thresholdConfig?.default ?? 1,
+    default: thresholdConfig?.default ?? DEFAULT_PHRASE_WORD_THRESHOLD,
     byLanguage: (thresholdConfig?.by_language ?? {}) as Record<string, number>,
   }
 }
@@ -270,7 +274,17 @@ export function normalizePointOutGlossary(raw?: string): PointOutGlossaryMode {
 }
 
 export function getPointOutGlossary(config: AppConfig): PointOutGlossaryMode {
-  return normalizePointOutGlossary(config.glossary?.point_out_glossary)
+  return normalizePointOutGlossary(config.app.point_out_glossary)
+}
+
+export function getLanguageOrder(config: AppConfig): string[] {
+  return normalizeLanguageOrder(config.app.language_order)
+}
+
+export function getTargetLanguageOrder(config: AppConfig): string[] {
+  const target = normalizeLanguageOrder(config.app.target_language_order)
+  if (target.length > 0) return target
+  return getLanguageOrder(config)
 }
 
 export function getDictionaryLlmShowExamples(config: AppConfig): boolean {
@@ -286,7 +300,7 @@ export function resolvePhraseWordThreshold(
   targetLang: string
 ): number {
   const thresholdConfig = config.app.phrase_word_threshold
-  const defaultThreshold = thresholdConfig?.default ?? 1
+  const defaultThreshold = thresholdConfig?.default ?? DEFAULT_PHRASE_WORD_THRESHOLD
   if (!thresholdConfig?.by_language) return defaultThreshold
 
   return thresholdConfig.by_language[targetLang] ?? defaultThreshold
@@ -325,6 +339,7 @@ export function resolveThemeColors(config: AppConfig): ThemeColors {
     error: resolve('error'),
     warning: resolve('warning'),
     alert: resolve('alert'),
+    icon_button: resolve('icon_button'),
   }
 }
 
@@ -422,6 +437,8 @@ export function toPublicMeta(
     rephraseBackTranslationPreload: getRephraseBackTranslationPreload(config),
     autoSwapLanguages: getAutoSwapLanguages(config),
     pointOutGlossary: getPointOutGlossary(config),
+    languageOrder: getLanguageOrder(config),
+    targetLanguageOrder: getTargetLanguageOrder(config),
     glossaryEntries: [],
     userLogin: {
       enabled: loginEnabled,

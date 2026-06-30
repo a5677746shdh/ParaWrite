@@ -428,7 +428,7 @@ export function Translator() {
 
   const phraseWordThreshold = useMemo(() => {
     const thresholds = meta?.phraseWordThresholds
-    if (!thresholds) return 1
+    if (!thresholds) return 4
     return thresholds.byLanguage[targetLang] ?? thresholds.default
   }, [meta?.phraseWordThresholds, targetLang])
 
@@ -497,7 +497,7 @@ export function Translator() {
     const threshold =
       meta?.phraseWordThresholds?.byLanguage[targetLang] ??
       meta?.phraseWordThresholds?.default ??
-      1
+      4
     const isPhrase = wordCount > threshold
 
     const sharedParams = {

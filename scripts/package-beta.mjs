@@ -112,6 +112,13 @@ copyFile(
   path.join(root, 'config/assetlinks.example.json'),
   path.join(outDir, 'config/assetlinks.example.json')
 )
+for (const name of [
+  'glossary.example.yaml',
+  'user.config.example.yaml',
+  'user.glossary.example.yaml',
+]) {
+  copyFile(path.join(root, 'config', name), path.join(outDir, 'config', name))
+}
 copyFile(path.join(root, 'CHANGELOG.md'), path.join(outDir, 'CHANGELOG.md'))
 copyFile(path.join(root, 'CHANGELOG.zh-CN.md'), path.join(outDir, 'CHANGELOG.zh-CN.md'))
 copyFile(path.join(root, 'README.md'), path.join(outDir, 'README.md'))

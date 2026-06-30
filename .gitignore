@@ -10,7 +10,6 @@ ai-memory/
 .DS_Store
 config/config.yaml
 config/config.local.yaml
-config/data/
 .env
 .env.*
 !.env.example

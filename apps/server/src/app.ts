@@ -538,6 +538,39 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
       if (!deleted) return c.json({ error: 'Not found' }, 404)
       return c.json({ ok: true })
     })
+
+    app.post('/api/history/delete-bulk', async (c) => {
+      const token = getCookie(c, USER_SESSION_COOKIE_NAME)
+      const userId = userSessionManager.getUserId(token)
+      if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+
+      const body = await c.req.json<{
+        mode?: string
+        ids?: number[]
+        filter?: string
+        excludeIds?: number[]
+      }>()
+
+      if (body.mode === 'filter') {
+        const filter = body.filter === 'favorites' ? 'favorites' : 'all'
+        const excludeIds = Array.isArray(body.excludeIds)
+          ? body.excludeIds.filter((id) => Number.isFinite(id))
+          : []
+        const deleted = historyService.deleteByFilter(userId, filter, excludeIds)
+        return c.json({ ok: true, deleted })
+      }
+
+      if (body.mode === 'ids') {
+        const ids = Array.isArray(body.ids)
+          ? body.ids.filter((id) => Number.isFinite(id))
+          : []
+        if (ids.length === 0) return c.json({ error: 'No ids provided' }, 400)
+        const deleted = historyService.deleteMany(userId, ids)
+        return c.json({ ok: true, deleted })
+      }
+
+      return c.json({ error: 'Invalid mode' }, 400)
+    })
   }
 
   app.post('/api/translate', async (c) => {

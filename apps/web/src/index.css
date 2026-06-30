@@ -13,6 +13,7 @@
   --color-error: #dc2626;
   --color-warning: #f59e0b;
   --color-alert: #ea580c;
+  --color-icon-button: #4a6280;
   color: var(--color-primary);
   background: var(--color-surface);
 }

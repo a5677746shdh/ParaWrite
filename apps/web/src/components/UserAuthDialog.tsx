@@ -179,7 +179,7 @@ export function UserAuthDialog({
           )}
 
           {tab === 'login' && (
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-deepl-blue/80">
+            <label className="flex cursor-pointer items-center justify-center gap-2 text-sm text-deepl-blue/80">
               <input
                 type="checkbox"
                 checked={rememberMe}

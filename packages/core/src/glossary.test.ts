@@ -1,9 +1,14 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import {
+  buildGlossaryPromptSection,
   collectGlossaryTermsInText,
   findGlossaryOccurrences,
   findGlossaryMarkRanges,
+  loadGlossaryFromPath,
   type GlossaryEntry,
 } from './glossary.js'
 
@@ -49,5 +54,53 @@ describe('findGlossaryMarkRanges', () => {
   it('returns ranges for matched glossary entries', () => {
     const ranges = findGlossaryMarkRanges('Hello ABC world', entries, 'en')
     assert.deepEqual(ranges, [{ start: 6, end: 9 }])
+  })
+})
+
+describe('buildGlossaryPromptSection', () => {
+  it('uses other when target language is missing', () => {
+    const withOther: GlossaryEntry[] = [
+      { translations: { zh: '猫猫', en: 'YellowBig', other: 'Hajime' } },
+    ]
+    const section = buildGlossaryPromptSection(withOther, 'zh', 'fr')
+    assert.match(section, /"猫猫" → "Hajime"/)
+  })
+
+  it('prefers explicit target language over other', () => {
+    const withOther: GlossaryEntry[] = [
+      { translations: { zh: '猫猫', en: 'YellowBig', other: 'Hajime' } },
+    ]
+    const section = buildGlossaryPromptSection(withOther, 'zh', 'en')
+    assert.match(section, /"猫猫" → "YellowBig"/)
+    assert.doesNotMatch(section, /Hajime/)
+  })
+})
+
+describe('parseGlossaryFile other fallback', () => {
+  it('accepts one language plus other', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pw-gloss-'))
+    const file = path.join(dir, 'glossary.yaml')
+    fs.writeFileSync(
+      file,
+      `entries:
+  - translations:
+      zh: 奶龙
+      other: NaiLong
+`
+    )
+    const parsed = loadGlossaryFromPath(file)
+    assert.equal(parsed.length, 1)
+    assert.equal(parsed[0]?.translations.zh, '奶龙')
+    assert.equal(parsed[0]?.translations.other, 'NaiLong')
+  })
+})
+
+describe('collectGlossaryTermsInText with other', () => {
+  it('matches other translation in target pane when language is missing', () => {
+    const withOther: GlossaryEntry[] = [
+      { translations: { zh: '猫猫', en: 'YellowBig', other: 'Hajime' } },
+    ]
+    const terms = collectGlossaryTermsInText(withOther, 'Say Hajime here', 'fr')
+    assert.deepEqual(terms, ['Hajime'])
   })
 })

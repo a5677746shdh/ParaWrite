@@ -92,6 +92,15 @@ Contextual dictionary lookup with hybrid sources and LLM fallback.
 | `POST` | `/api/history/favorite` | Add current translation as favorite |
 | `PATCH` | `/api/history/:id/favorite` | Toggle favorite flag |
 | `DELETE` | `/api/history/:id` | Delete entry |
+| `POST` | `/api/history/delete-bulk` | Delete multiple entries (see below) |
+
+### `POST /api/history/delete-bulk`
+
+**Body (by ids):** `{ "mode": "ids", "ids": [1, 2, 3] }`
+
+**Body (by filter):** `{ "mode": "filter", "filter": "all" | "favorites", "excludeIds": [4] }` — deletes all matching entries except those in `excludeIds`.
+
+**Response:** `{ "ok": true, "deleted": <number> }`
 
 ## Admin
 

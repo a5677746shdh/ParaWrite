@@ -248,6 +248,34 @@ export class HistoryService {
     return result.changes > 0
   }
 
+  deleteMany(userId: number, ids: number[]): number {
+    const uniqueIds = [...new Set(ids.filter((id) => Number.isFinite(id)))]
+    if (uniqueIds.length === 0) return 0
+
+    const placeholders = uniqueIds.map(() => '?').join(', ')
+    const stmt = this.db.prepare(
+      `DELETE FROM translation_history WHERE user_id = ? AND id IN (${placeholders})`
+    )
+    return this.db.transaction(() => stmt.run(userId, ...uniqueIds).changes)()
+  }
+
+  deleteByFilter(
+    userId: number,
+    filter: 'all' | 'favorites',
+    excludeIds: number[] = []
+  ): number {
+    const uniqueExcludeIds = [...new Set(excludeIds.filter((id) => Number.isFinite(id)))]
+    const excludeClause =
+      uniqueExcludeIds.length > 0
+        ? ` AND id NOT IN (${uniqueExcludeIds.map(() => '?').join(', ')})`
+        : ''
+    const favoriteClause = filter === 'favorites' ? ' AND is_favorite = 1' : ''
+    const stmt = this.db.prepare(
+      `DELETE FROM translation_history WHERE user_id = ?${favoriteClause}${excludeClause}`
+    )
+    return this.db.transaction(() => stmt.run(userId, ...uniqueExcludeIds).changes)()
+  }
+
   private getLatestNonFavorite(userId: number): HistoryRow | undefined {
     return this.stmtGetLatestNonFavorite.get(userId) as HistoryRow | undefined
   }

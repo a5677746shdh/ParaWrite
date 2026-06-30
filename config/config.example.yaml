@@ -44,6 +44,16 @@ app:
   rephrase_hover_preview_delay_ms: 800     # 悬停多久后触发回译（毫秒）
   rephrase_back_translation_preload: off   # off | partial | all — 回译预加载：关闭 / 悬停时 / 查词完成后全部
   auto_swap_languages: false            # true：检测到原文语言与目标语言相同时自动交换语言对
+  point_out_glossary: off   # off | first | full — 术语表词汇标注：关闭 / 首字圆点 / 全文下划线
+  # language_order:           # 源语言下拉框自定义排序（ISO 639-1）；未列出的语言按名称字母序排在后面
+  #   - auto
+  #   - zh
+  #   - en
+  #   - ja
+  # target_language_order:    # 译文语言下拉框排序；未设置时使用 language_order
+  #   - en
+  #   - zh
+  #   - ja
 
 # ---------------------------------------------------------------------------
 # LLM 服务商 / Providers
@@ -91,7 +101,6 @@ dictionary:
 # ---------------------------------------------------------------------------
 glossary:
   file: config/glossary.yaml
-  point_out_glossary: off   # off | first | full — 术语表词汇标注：关闭 / 首字圆点 / 全文下划线
 
 # ---------------------------------------------------------------------------
 # PWA / Android TWA（Digital Asset Links）
@@ -156,3 +165,4 @@ theme:
   error: '#dc2626'      # 错误提示（表单校验失败等）
   warning: '#f59e0b'    # 轻度警告（如收藏星标）
   alert: '#ea580c'      # 强警告（重启后端、退出登录等）
+  icon_button: '#4a6280' # 可点击图标按钮（复制、粘贴、选项等）

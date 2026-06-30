@@ -13,10 +13,10 @@ const distPaths = [
 ]
 
 const emptyDirs = [
-  'packages/core/src/users',
-  'apps/server/src/db',
-  'apps/server/src/routes',
-  'ai-memory',
+  'packages/core/src/fixtures',
+  'apps/web/src/components/icons',
+  'apps/web/src/assets/icons',
+  'apps/web/src/assets',
 ]
 
 for (const rel of distPaths) {

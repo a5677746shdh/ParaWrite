@@ -28,6 +28,9 @@ app:
   runtime_env: dev                  # Shown next to version in UI
   translate_on_enter: false         # true: Enter; false: Ctrl/Cmd+Enter
   auto_swap_languages: false        # true: swap language pair when source text matches target language
+  point_out_glossary: off           # off | first | full — glossary term marks in editor panes
+  # language_order: [zh, en, ja, auto]  # source language dropdown; omitted langs sort A–Z after these
+  # target_language_order: [en, zh, ja] # target language dropdown; falls back to language_order when unset
   alternatives_separator:
     default: comma                  # comma | period — rephrase unit boundaries + API response splitting
     by_language:
@@ -45,6 +48,8 @@ app:
       default: 0.5
       by_pair:
         zh-en: 0.4
+  selection_copy_enabled: false
+  word_lookup_mode: adaptive
 ```
 
 ### Pane width ratios
@@ -75,6 +80,33 @@ Per-language overrides use the **target language** code (e.g. English target →
 When `auto_swap_languages: true`, if the text in the source box is detected as the **target** language, the UI swaps source and target automatically. The swap button icon changes to indicate auto-swap mode. Manual swap still works.
 
 When the source language is **auto**, the partner language for the swap is the logged-in user’s saved interface locale (if set), otherwise the current UI language.
+
+### Language dropdown order
+
+Translation language selects sort options **alphabetically by display name** by default.
+
+- `app.language_order` — source language dropdown (includes `auto` when shown). Listed codes appear first; others follow A–Z.
+- `app.target_language_order` — target language dropdown. When unset or empty, uses `language_order`.
+
+Logged-in users may override either via per-user `app` preferences.
+
+### Phrase word threshold
+
+`phrase_word_threshold` hides synonyms and dictionary in the word panel when the selection exceeds the configured word count (default **4**). Per-language overrides use the **target** language code.
+
+### Word lookup mode
+
+`word_lookup_mode` controls when dictionary/synonyms load after selecting a word:
+
+| Value | Behavior |
+|-------|----------|
+| `immediate` | Lookup on every word click |
+| `manual` | User taps the lookup button in the target pane footer |
+| `adaptive` | Manual on narrow layouts; immediate in three-column mode (default) |
+
+### Selection copy
+
+When `selection_copy_enabled: true`, selecting multiple consecutive words turns the target-pane copy button into a selection copier (instead of copying the full translation).
 
 ### Rephrase hover preview
 
@@ -149,12 +181,15 @@ Contextual lookups (`POST /api/dictionary/context`) combine these sources and re
 ```yaml
 glossary:
   file: config/glossary.yaml
-  point_out_glossary: off   # off | first | full
 ```
 
 Relative paths resolve from the app root. Terms are injected into translation prompts when relevant. See [`config/glossary.example.yaml`](../config/glossary.example.yaml). Language keys use **ISO 639-1** (`zh`, `en`, …).
 
+Each entry may include an optional **`other`** key: when the target language is not listed for that entry, the `other` translation is used instead (explicit language keys always take priority). An entry needs at least two language keys, or one language key plus `other`.
+
 ### Glossary marks in editor panes
+
+Configure under `app.point_out_glossary` (`off` | `first` | `full`). Logged-in users may override via per-user `app` preferences (see [User config](#user-config-per-account)).
 
 When enabled, terms from the effective glossary (global + per-user merge when logged in) are marked in the source and target panes:
 
@@ -166,7 +201,7 @@ When enabled, terms from the effective glossary (global + per-user merge when lo
 
 Matching uses the source language in the source pane (all glossary languages when source is `auto`) and the target language in the target pane. Longer terms take priority; overlaps are skipped.
 
-Entries are sent to the browser via `/api/meta` when `point_out_glossary` is not `off`.
+Entries are sent to the browser via `/api/meta` when `app.point_out_glossary` is not `off`.
 
 ## PWA / Android TWA
 
@@ -252,6 +287,7 @@ theme:
   error: '#dc2626'
   warning: '#f59e0b'
   alert: '#ea580c'
+  icon_button: '#4a6280'
 ```
 
 Colors must be `#RRGGBB` hex. See [UI-DESIGN.md](UI-DESIGN.md) for token usage.
@@ -260,7 +296,7 @@ Colors must be `#RRGGBB` hex. See [UI-DESIGN.md](UI-DESIGN.md) for token usage.
 
 When user login is enabled, each registered user gets a `config_id`. Optional YAML at `{user_config_dir}/{config_id}.yaml` (default `data/user-configs/`) may override **only** `app` and `theme` from the global config when the user is logged in. Secrets (`providers`, `auth`, etc.) are ignored if present.
 
-See [`config/user.config.example.yaml`](../config/user.config.example.yaml). User `app.default_provider` must exist in the global `providers` block.
+See [`config/user.config.example.yaml`](../config/user.config.example.yaml). User `app.default_provider` must exist in the global `providers` block. Any `app` key from the global config may be overridden, including `point_out_glossary`.
 
 ## User glossary (per account)
 

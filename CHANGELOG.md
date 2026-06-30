@@ -4,6 +4,30 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-06-30
+
+### Added (`POST /api/history/delete-bulk`, multi-select toolbar in history panel)
+- Glossary `other` fallback key for target languages not listed per entry
+- `app.language_order` and `app.target_language_order` for source/target language dropdown sorting
+- Theme token `icon_button` for clickable icon button color
+
+### Changed
+- `point_out_glossary` moved from `glossary` to `app` (per-user override supported)
+- `phrase_word_threshold` default aligned to **4** in code (matches docs and examples)
+- Beta package includes `glossary.example.yaml`, `user.config.example.yaml`, `user.glossary.example.yaml`
+- Glossary marking utilities moved to `glossary-mark.ts` so the web bundle no longer pulls Node `fs` (~45KB smaller)
+- History panel footer uses container queries (`@[480px]/history`) for panel-width responsive layout; options/back share one button slot
+
+### Fixed
+- Removed duplicate/wrong SQLite index `idx_history_dedup` (kept `idx_history_dedup_target`)
+- History bulk delete shows an error message on failure
+- Avoid duplicate history fetch after bulk delete (`bumpHistoryRefresh` + `loadHistory` both fired)
+- Glossary source editor no longer re-syncs textarea ref on every keystroke
+- History footer container query class syntax (`@[480px]/history` instead of invalid `@min-[480px]/history`)
+
+### Removed
+- Unused client `deleteHistoryEntry()` (bulk delete API used in UI)
+
 ## [1.0.0] — 2026-06-28
 
 First public release of ParaWrite.
@@ -256,7 +280,7 @@ First public release of ParaWrite.
 
 ### Added
 - Startup log with ISO timestamp and build version
-- `config/parawrite.docker.example.yaml` for NAS/Docker deployment
+- `config/config.docker.example.yaml` for NAS/Docker deployment
 - `config/.gitignore` to keep local secrets out of Git
 
 ### Changed

@@ -325,10 +325,19 @@ export async function toggleHistoryFavorite(id: number): Promise<TranslationHist
   return data.entry
 }
 
-export async function deleteHistoryEntry(id: number): Promise<void> {
-  const res = await fetch(`/api/history/${id}`, {
+export type DeleteHistoryBulkBody =
+  | { mode: 'ids'; ids: number[] }
+  | { mode: 'filter'; filter: 'all' | 'favorites'; excludeIds?: number[] }
+
+export async function deleteHistoryBulk(
+  body: DeleteHistoryBulkBody
+): Promise<{ deleted: number }> {
+  const res = await fetch('/api/history/delete-bulk', {
     ...fetchOptions,
-    method: 'DELETE',
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   })
-  await throwIfNotOk(res, 'Failed to delete history entry')
+  await throwIfNotOk(res, 'Failed to delete history entries')
+  return res.json()
 }

@@ -12,6 +12,7 @@ const CSS_VAR_MAP: Record<keyof ThemeColors, string> = {
   error: '--color-error',
   warning: '--color-warning',
   alert: '--color-alert',
+  icon_button: '--color-icon-button',
 }
 
 export function applyTheme(theme: ThemeColors): void {

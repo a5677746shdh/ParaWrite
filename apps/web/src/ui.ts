@@ -18,9 +18,35 @@ export const panePlaceholderClass = 'text-deepl-muted'
 /** Native textarea placeholder — pair with `paneEditorTextClass`. */
 export const panePlaceholderFieldClass = 'placeholder:text-deepl-muted'
 
+/** Shared enabled/disabled colors for icon-only buttons (matches copy button). */
+export const iconButtonColorClass =
+  'text-deepl-icon hover:bg-deepl-light disabled:opacity-50 disabled:cursor-not-allowed'
+
+/** Delete icon button when items are selected. */
+export const iconButtonDeleteClass = 'text-deepl-error hover:bg-deepl-error/10'
+
+/** Favorite icon button when entry is favorited. */
+export const iconButtonFavoriteActiveClass = 'text-deepl-warning'
+
 /** Translation pane footer icon buttons (copy, speak, clear). */
 export const paneIconButtonClass =
-  'flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-deepl-border bg-white hover:bg-deepl-light disabled:opacity-50'
+  `flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg border border-deepl-border bg-white ${iconButtonColorClass}`
+
+/** Header toolbar icon buttons (swap, settings). */
+export const headerIconButtonClass =
+  `flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-deepl-border bg-white ${iconButtonColorClass}`
+
+/** History panel toolbar icon buttons (options, select all, delete, back). */
+export const historyIconButtonShellClass =
+  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg disabled:opacity-50 disabled:cursor-not-allowed'
+
+/** History panel header icon button (add favorite). */
+export const historyHeaderIconButtonClass =
+  `flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconButtonColorClass}`
+
+/** Per-entry icon buttons in history list (favorite, checkbox). */
+export const historyEntryIconButtonClass =
+  `shrink-0 rounded p-1 ${iconButtonColorClass}`
 
 /** Source pane muted clear icon when text is present. */
 export const paneClearIconClass = 'text-deepl-blue/40'

@@ -30,15 +30,16 @@ export interface DictionaryConfig {
 
 export interface GlossaryConfig {
   file?: string
-  /** Mark glossary terms in panes: `off`, `first` (dot under first char), `full` (underline). */
-  point_out_glossary?: PointOutGlossaryMode
 }
 
 /** How matched glossary terms are marked in the editor panes. */
 export type PointOutGlossaryMode = 'off' | 'first' | 'full'
 
 export interface GlossaryEntry {
-  /** ISO 639-1 language code → term */
+  /**
+   * ISO 639-1 language code → term.
+   * Optional `other` key: fallback translation when the target language is not listed.
+   */
   translations: Record<string, string>
 }
 
@@ -129,6 +130,7 @@ export interface ThemeConfig {
   error?: string
   warning?: string
   alert?: string
+  icon_button?: string
 }
 
 export interface ThemeColors {
@@ -142,6 +144,7 @@ export interface ThemeColors {
   error: string
   warning: string
   alert: string
+  icon_button: string
 }
 
 export interface LayoutConfig {
@@ -199,6 +202,12 @@ export interface AppConfig {
     rephrase_back_translation_preload?: RephraseBackTranslationPreload
     /** When true, swap languages automatically if source text matches target language. */
     auto_swap_languages?: boolean
+    /** Mark glossary terms in panes: `off`, `first` (dot under first char), `full` (underline). */
+    point_out_glossary?: PointOutGlossaryMode
+    /** Custom sort order for translation language dropdowns (ISO 639-1 codes). */
+    language_order?: string[]
+    /** Target language dropdown order; falls back to `language_order` when unset or empty. */
+    target_language_order?: string[]
   }
   providers: Record<string, ProviderConfig>
   dictionary: DictionaryConfig
@@ -279,6 +288,8 @@ export interface PublicMeta {
   rephraseBackTranslationPreload: RephraseBackTranslationPreload
   autoSwapLanguages: boolean
   pointOutGlossary: PointOutGlossaryMode
+  languageOrder: string[]
+  targetLanguageOrder: string[]
   glossaryEntries: GlossaryEntry[]
   userLogin: PublicUserLoginMeta
   theme: ThemeColors

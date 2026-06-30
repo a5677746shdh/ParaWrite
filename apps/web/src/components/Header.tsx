@@ -5,7 +5,7 @@ import { useTranslationStore } from '../store'
 import { LanguageSelect } from './LanguageSelect'
 import { ResetDialog } from './ResetDialog'
 import { AutoSwapIcon } from '../icons/AutoSwapIcon'
-import { formSelectClass } from '../ui'
+import { formSelectClass, headerIconButtonClass } from '../ui'
 
 const PROVIDER_MODEL_SEP = '::'
 
@@ -30,11 +30,7 @@ function HeaderIconButton({
       disabled={disabled}
       title={title}
       aria-label={title}
-      className={
-        disabled
-          ? 'flex h-10 w-10 shrink-0 cursor-not-allowed items-center justify-center rounded-lg border border-deepl-border text-deepl-blue/30'
-          : 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-deepl-border text-deepl-blue hover:bg-deepl-light'
-      }
+      className={headerIconButtonClass}
     >
       {children}
     </button>
@@ -188,6 +184,7 @@ export function Header() {
               value={sourceLang}
               onChange={setSourceLang}
               allowAuto
+              languageOrder={meta?.languageOrder}
             />
 
             <HeaderIconButton
@@ -202,6 +199,7 @@ export function Header() {
               label={t('targetLanguage')}
               value={targetLang}
               onChange={setTargetLang}
+              languageOrder={meta?.targetLanguageOrder}
             />
 
             <div className="flex shrink-0 items-end gap-2">

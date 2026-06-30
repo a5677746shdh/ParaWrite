@@ -10,6 +10,8 @@ ParaWrite is a pnpm monorepo with three runtime packages and shared configuratio
 | **server** | `apps/server` | Hono HTTP API, SQLite persistence, static file serving |
 | **core** | `packages/core` | LLM engines, dictionary, config loader, segmenter, prompts |
 
+`packages/core` splits **server-only** modules (YAML/`fs` loaders in `glossary.ts`, `config.ts`, `user-config.ts`) from **browser-safe** exports in `@parawrite/core/client` (types, segmenter, layout, `glossary-mark.ts` for in-editor term highlighting).
+
 Build order: `core` → `server` + `web`. In development, `core` runs `tsc --watch` alongside Vite and the server.
 
 ## Request flow
@@ -60,8 +62,10 @@ User login modes: `disabled`, `restricted` (whitelist registration), `open`.
 | Path | Contents |
 |------|----------|
 | `config/config.yaml` | Local secrets and settings (gitignored) |
-| `data/` | SQLite database `parawrite.db` (gitignored) |
-| `config/glossary.yaml` | Optional glossary terms |
+| `config/glossary.yaml` | Optional global glossary (gitignored) |
+| `data/` | SQLite `parawrite.db` (gitignored) |
+| `data/user-configs/` | Per-user `app` / `theme` YAML (`{config_id}.yaml`) |
+| `data/user-glossaries/` | Per-user glossary YAML (`{glossary_id}.yaml`) |
 
 Override paths with `PARWRITE_CONFIG` and `PARWRITE_DATA_DIR` environment variables.
 

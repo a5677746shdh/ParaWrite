@@ -26,9 +26,11 @@ More UI details: [docs/UI-DESIGN.md](docs/UI-DESIGN.md).
 
 - **Streaming translation** with DeepL-style source/target panes and responsive layouts
 - **Word panel** — synonyms, bilingual dictionary, and alternative phrasings on word click
+- **Glossary** — YAML domain terms in prompts; `other` fallback; optional pane marking (`app.point_out_glossary`)
+- **Translation history** — auto-save when signed in; favorites, pagination, bulk select/delete
 - **Configurable LLM backends** — OpenAI-compatible APIs, Claude, and Ollama via YAML
+- **Per-user preferences** — optional `app` / `theme` / glossary YAML per account
 - **PWA** — installable app with offline shell
-- **Optional user accounts** — SQLite-backed translation history and favorites
 
 ## Prerequisites
 

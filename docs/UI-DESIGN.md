@@ -16,8 +16,9 @@ This document defines the visual and layout conventions used across the ParaWrit
 | error | `--color-error` | `#dc2626` | Errors, validation failures |
 | warning | `--color-warning` | `#f59e0b` | Favorite star (active) |
 | alert | `--color-alert` | `#ea580c` | Strong warning: restart backend, sign out |
+| icon_button | `--color-icon-button` | `#4a6280` | Clickable icon buttons (copy, paste, options) |
 
-Tailwind classes map to these variables: `text-deepl-blue`, `bg-deepl-accent`, `text-deepl-muted`, etc.
+Tailwind classes map to these variables: `text-deepl-blue`, `text-deepl-icon`, `bg-deepl-accent`, `text-deepl-muted`, etc.
 
 Opacity variants on primary text use `text-deepl-blue/60`, `/70` for labels and hints.
 
@@ -215,11 +216,26 @@ New icons should follow the same pattern: one button element, shared shell class
 - Placed directly below the translation card (`mt-4`)
 - Header: tab switcher (**Favorites** left, **All** right) + icon-only add-favorite button (`h-10 w-10`)
 - List height grows with current page content (no fixed max-height scroll)
-- Pagination footer: `h-10` prev/next buttons, page indicator `{{page}} / {{total}}`
+- Pagination footer: `h-10` prev/next when multiple pages; options (⋮) stays **right-aligned** (`ml-auto` on narrow layouts)
+- Footer uses **container queries** (`@container/history`, `@[480px]/history:*`) so stacking follows **panel width**, not viewport
+- **Narrow** (< 480px panel): selection toolbar on top row (delete, select-all); pagination + options/back on bottom row (`flex-nowrap`)
+- **Wide** (≥ 480px panel): single row — delete | centered pagination | select-all/back or options
+- **Options / back:** same button slot; entering selection mode swaps ⋮ for back (arrow right on wide, down on narrow)
+- **Selection mode** (options ⋮ icon): entry favorite stars become checkboxes; footer adds delete (left), select-all and back (right); delete confirms count in a modal
 - Page size configured via `users.history.page_size` in YAML (default 5)
-- Entry: `rounded-lg border border-deepl-border bg-deepl-light/50 p-3`
 - Entry text order: **target (translation) on top** in `text-deepl-blue`; **source below** in `text-deepl-muted`
-- Favorite toggle: star icon, `text-deepl-warning` when active
+- Favorite toggle: star icon, `text-deepl-warning` when active; default icon color uses `icon_button` theme token
+
+## Glossary marking
+
+When `app.point_out_glossary` is not `off`, matched glossary terms are highlighted in source and target panes:
+
+| Mode | Visual |
+|------|--------|
+| `first` | 4px border-colored dot under the first character |
+| `full` | 2px border-colored underline under the full term |
+
+Source pane uses a transparent-text textarea overlay (`GlossarySourceEditor`); target pane marks tokens in `TokenEditor`.
 
 ## Forms
 

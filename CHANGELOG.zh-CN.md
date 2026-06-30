@@ -4,6 +4,31 @@
 
 ## [未发布]
 
+## [1.1.0] — 2026-06-30
+
+### 新增
+- 翻译记录多选批量删除（`POST /api/history/delete-bulk`，历史面板多选工具栏）
+- 术语表 `other` 回退键（未单独配置的目标语言使用该译法）
+- `app.language_order` 与 `app.target_language_order` 自定义源/译文语言下拉排序
+- 主题色 `icon_button` 可配置图标按钮颜色
+
+### 变更
+- `point_out_glossary` 从 `glossary` 移至 `app`（支持用户独立配置）
+- `phrase_word_threshold` 代码默认值为 **4**（与文档一致）
+- Beta 打包包含 `glossary.example.yaml`、`user.config.example.yaml`、`user.glossary.example.yaml`
+- 术语表标注逻辑拆至 `glossary-mark.ts`，前端 bundle 不再拉入 Node `fs` 模块（约减 45KB）
+- 历史面板底栏使用容器查询（`@[480px]/history`）按面板宽度响应式布局；选项/返回共用同一按钮位
+
+### 修复
+- 移除错误/重复的 SQLite 索引 `idx_history_dedup`
+- 批量删除失败时显示错误提示
+- 批量删除后避免重复请求历史列表（`bumpHistoryRefresh` 与 `loadHistory` 重复触发）
+- 源文术语标注编辑器不再在每次按键时重复同步 textarea ref
+- 历史底栏容器查询类名修正（`@[480px]/history` 替代无效的 `@min-[480px]/history`）
+
+### 移除
+- 未使用的客户端 `deleteHistoryEntry()`（UI 使用批量删除 API）
+
 ## [1.0.0] — 2026-06-28
 
 ParaWrite 首个公开发布版本。
@@ -256,7 +281,7 @@ ParaWrite 首个公开发布版本。
 
 ### 新增
 - 启动日志含 ISO 时间戳与构建版本
-- NAS/Docker 部署用 `config/parawrite.docker.example.yaml`
+- NAS/Docker 部署用 `config/config.docker.example.yaml`
 - `config/.gitignore` 防止本地密钥入库
 
 ### 变更

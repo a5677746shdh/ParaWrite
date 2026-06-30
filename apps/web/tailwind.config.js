@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import containerQueries from '@tailwindcss/container-queries'
+
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
@@ -15,6 +17,7 @@ export default {
           error: 'var(--color-error)',
           warning: 'var(--color-warning)',
           alert: 'var(--color-alert)',
+          icon: 'var(--color-icon-button)',
         },
       },
       fontFamily: {
@@ -22,5 +25,5 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [containerQueries],
 }

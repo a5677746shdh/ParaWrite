@@ -1,4 +1,5 @@
-import { SUPPORTED_LANGUAGES } from '@parawrite/core/client'
+import { SUPPORTED_LANGUAGES, sortSupportedLanguages } from '@parawrite/core/client'
+import { useMemo } from 'react'
 import { formSelectClass } from '../ui'
 
 interface LanguageSelectProps {
@@ -6,6 +7,7 @@ interface LanguageSelectProps {
   onChange: (value: string) => void
   label: string
   allowAuto?: boolean
+  languageOrder?: string[]
 }
 
 export function LanguageSelect({
@@ -13,10 +15,14 @@ export function LanguageSelect({
   onChange,
   label,
   allowAuto = false,
+  languageOrder = [],
 }: LanguageSelectProps) {
-  const languages = allowAuto
-    ? SUPPORTED_LANGUAGES
-    : SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto')
+  const languages = useMemo(() => {
+    const base = allowAuto
+      ? SUPPORTED_LANGUAGES
+      : SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto')
+    return sortSupportedLanguages(base, languageOrder)
+  }, [allowAuto, languageOrder])
 
   return (
     <label className="flex flex-col gap-1 text-sm">
