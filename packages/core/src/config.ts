@@ -16,6 +16,7 @@ import type {
   ResolvedLoggingConfig,
   ThemeColors,
   UserLoginMode,
+  UserSessionPersistenceMode,
   WordLookupMode,
   RephraseBackTranslationPreload,
   PointOutGlossaryMode,
@@ -361,6 +362,39 @@ export function getUserSessionTtlHours(config: AppConfig): number {
 
 export function getAccessSessionTtlHours(config: AppConfig): number {
   return config.auth?.session_ttl_hours ?? 24
+}
+
+export function isAccessSessionPersistent(config: AppConfig): boolean {
+  return isAccessAuthEnabled(config) && config.auth?.persistent_sessions === true
+}
+
+export function getUserSessionPersistenceMode(config: AppConfig): UserSessionPersistenceMode {
+  return config.users?.login?.persistent_sessions ?? 'disabled'
+}
+
+export function isUsernameInAllowlist(username: string, allowedUsernames: string[]): boolean {
+  const normalized = username.trim().toLowerCase()
+  return allowedUsernames.some((u) => u.trim().toLowerCase() === normalized)
+}
+
+export function shouldPersistAccessSession(config: AppConfig, rememberMe: boolean): boolean {
+  return rememberMe === true && isAccessSessionPersistent(config)
+}
+
+export function shouldPersistUserSession(
+  config: AppConfig,
+  username: string,
+  rememberMe: boolean
+): boolean {
+  if (rememberMe !== true) return false
+  const mode = getUserSessionPersistenceMode(config)
+  if (mode === 'disabled') return false
+  if (mode === 'all') return true
+  return isUsernameInAllowlist(username, config.users?.login?.allowed_usernames ?? [])
+}
+
+export function shouldClearAccessOnUserLogout(config: AppConfig): boolean {
+  return config.users?.login?.clear_access_on_logout === true
 }
 
 export function getLoggingConfig(config: AppConfig): ResolvedLoggingConfig {

@@ -19,12 +19,14 @@ import {
   createEngineCache,
   getHistoryConfig,
   getUserLoginMode,
+  getUserSessionPersistenceMode,
   getUserSessionTtlHours,
   getAccessSessionTtlHours,
   getLoggingConfig,
   getPointOutGlossary,
   GlossaryService,
   isAccessAuthEnabled,
+  isAccessSessionPersistent,
   isRestartAuthEnabled,
   isUserLoginEnabled,
   parseJsonResponse,
@@ -33,6 +35,9 @@ import {
   resolveAssetLinksPath,
   loadAssetLinksFile,
   SESSION_COOKIE_NAME,
+  shouldPersistAccessSession,
+  shouldPersistUserSession,
+  shouldClearAccessOnUserLogout,
   toPublicMeta,
   verifyTotp,
   type AppConfig,
@@ -43,10 +48,11 @@ import {
 import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { openDatabase } from './db.js'
+import { openDatabase, type AppDatabase } from './db.js'
 import { HistoryService } from './history-service.js'
 import { UserError, UserService } from './user-service.js'
 import { USER_SESSION_COOKIE_NAME, UserSessionManager } from './user-session.js'
+import { createAccessSessionStore, createUserSessionStore } from './session-store.js'
 import {
   createEventLogger,
   shouldSkipAppApiErrorLog,
@@ -124,12 +130,19 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
   const dictionary = new DictionaryService(config, getEngine)
   const appRoot = getAppRoot(configPath)
   const glossary = GlossaryService.fromConfig(appRoot, config.glossary?.file)
-  const authManager = new AuthManager(getAccessSessionTtlHours(config))
   const accessAuthEnabled = isAccessAuthEnabled(config)
   const restartAuthEnabled = isRestartAuthEnabled(config)
   const userLoginEnabled = isUserLoginEnabled(config)
   const userLoginMode = getUserLoginMode(config)
   const events = createEventLogger(getLoggingConfig(config))
+
+  const dataDir = resolveDataDir(config, configPath)
+  const needsDb = userLoginEnabled || isAccessSessionPersistent(config)
+  let db: AppDatabase | null = needsDb ? openDatabase(dataDir) : null
+
+  const authManager = new AuthManager(getAccessSessionTtlHours(config), {
+    store: db && isAccessSessionPersistent(config) ? createAccessSessionStore(db) : undefined,
+  })
 
   let userService: UserService | null = null
   let historyService: HistoryService | null = null
@@ -137,8 +150,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
   let userResourceCache: UserResourceCache | null = null
 
   if (userLoginEnabled) {
-    const dataDir = resolveDataDir(config, configPath)
-    const db = openDatabase(dataDir)
+    if (!db) db = openDatabase(dataDir)
     userService = new UserService(db)
     const historyConfig = getHistoryConfig(config)
     historyService = new HistoryService(
@@ -146,7 +158,12 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
       historyConfig.similarityThreshold,
       historyConfig.dedupIntervalSeconds
     )
-    userSessionManager = new UserSessionManager(getUserSessionTtlHours(config))
+    userSessionManager = new UserSessionManager(getUserSessionTtlHours(config), {
+      store:
+        getUserSessionPersistenceMode(config) !== 'disabled'
+          ? createUserSessionStore(db)
+          : undefined,
+    })
     userResourceCache = new UserResourceCache(config, configPath, glossary)
   }
 
@@ -262,9 +279,11 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
       return c.json({ error: 'Invalid code' }, 401)
     }
 
-    const token = authManager.createSession()
-    const sessionTtlHours = getAccessSessionTtlHours(config)
     const rememberMe = body.rememberMe === true
+    const token = authManager.createSession({
+      persist: shouldPersistAccessSession(config, rememberMe),
+    })
+    const sessionTtlHours = getAccessSessionTtlHours(config)
     setCookie(c, SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: 'Strict',
@@ -298,7 +317,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
     const setUserCookie = (
       c: Parameters<typeof setCookie>[0],
       token: string,
-      rememberMe = true
+      rememberMe: boolean
     ) => {
       setCookie(c, USER_SESSION_COOKIE_NAME, token, {
         httpOnly: true,
@@ -329,8 +348,11 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
 
       try {
         const profile = await userService.register(body.username, body.password, body.nickname)
-        const token = userSessionManager.createSession(profile.id)
-        setUserCookie(c, token, body.rememberMe !== false)
+        const rememberMe = body.rememberMe === true
+        const token = userSessionManager.createSession(profile.id, {
+          persist: shouldPersistUserSession(config, profile.username, rememberMe),
+        })
+        setUserCookie(c, token, rememberMe)
         return c.json({
           user: {
             id: profile.id,
@@ -369,8 +391,11 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
 
       clearLoginFailures(loginAttemptKey(getClientIp(c), body.username))
 
-      const token = userSessionManager.createSession(profile.id)
-      setUserCookie(c, token, body.rememberMe !== false)
+      const rememberMe = body.rememberMe === true
+      const token = userSessionManager.createSession(profile.id, {
+        persist: shouldPersistUserSession(config, profile.username, rememberMe),
+      })
+      setUserCookie(c, token, rememberMe)
       return c.json({
         user: {
           id: profile.id,
@@ -390,7 +415,7 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
         maxAge: 0,
       })
 
-      if (accessAuthEnabled) {
+      if (accessAuthEnabled && shouldClearAccessOnUserLogout(config)) {
         const accessToken = getCookie(c, SESSION_COOKIE_NAME)
         if (accessToken) authManager.revokeSession(accessToken)
         setCookie(c, SESSION_COOKIE_NAME, '', {

@@ -4,6 +4,18 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [1.1.2] — 2026-07-01
+
+### Added
+- Optional SQLite session persistence across server restarts (`auth.persistent_sessions`, `users.login.persistent_sessions`)
+- `users.login.clear_access_on_logout` — control whether user sign-out also revokes the TOTP access session (default `false`)
+
+### Changed
+- User logout no longer clears TOTP access session unless `clear_access_on_logout` is `true`
+- Production builds exclude `*.test.ts`; tests run from source via `tsx`
+- `pnpm clean` also removes `artifacts/parawrite-beta` and tsbuildinfo files
+- Beta `docker-compose.yml` uses portable `./config` and `./data` volume mounts
+
 ## [1.1.0] — 2026-06-30
 
 ### Added (`POST /api/history/delete-bulk`, multi-select toolbar in history panel)

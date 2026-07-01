@@ -41,8 +41,8 @@ const BETA_COMPOSE = `services:
     ports:
       - '13536:8787'
     volumes:
-      - /vol1/1000/DockerFiles/paraWriteBeta/config:/app/config
-      - /vol1/1000/DockerFiles/paraWriteBeta/data:/app/data
+      - ./config:/app/config
+      - ./data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://localhost:8787/health']
@@ -55,6 +55,7 @@ const BETA_COMPOSE = `services:
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true })
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    if (entry.name.includes('.test.')) continue
     const from = path.join(src, entry.name)
     const to = path.join(dest, entry.name)
     if (entry.isDirectory()) {
@@ -143,8 +144,8 @@ const manifest = {
   docker: {
     build: 'docker compose up --build',
     port: 13536,
-    configMount: '/vol1/1000/DockerFiles/paraWriteBeta/config:/app/config',
-    dataMount: '/vol1/1000/DockerFiles/paraWriteBeta/data:/app/data',
+    configMount: './config:/app/config',
+    dataMount: './data:/app/data',
     health: 'GET /health',
   },
 }

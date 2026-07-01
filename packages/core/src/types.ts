@@ -65,6 +65,8 @@ export interface AuthConfig {
   access_totp_secret?: string
   restart_totp_secret?: string
   session_ttl_hours?: number
+  /** When true, remember-me TOTP sessions survive server restarts (SQLite). */
+  persistent_sessions?: boolean
 }
 
 /** Server-side terminal logging toggles (all default off). */
@@ -97,10 +99,16 @@ export interface ResolvedLoggingConfig {
 
 export type UserLoginMode = 'disabled' | 'restricted' | 'open'
 
+export type UserSessionPersistenceMode = 'disabled' | 'restricted' | 'all'
+
 export interface UserLoginConfig {
   mode?: UserLoginMode
   allowed_usernames?: string[]
   session_ttl_hours?: number
+  /** Remember-me user sessions: disabled | restricted (allowlist) | all. */
+  persistent_sessions?: UserSessionPersistenceMode
+  /** When true, user logout also revokes TOTP access session. Default false. */
+  clear_access_on_logout?: boolean
 }
 
 export interface UserHistoryConfig {

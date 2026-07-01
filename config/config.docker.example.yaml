@@ -58,12 +58,15 @@ auth:
   access_totp_secret: ${ACCESS_TOTP_SECRET}
   restart_totp_secret: ${RESTART_TOTP_SECRET}
   session_ttl_hours: 24
+  persistent_sessions: false
 
 users:
   login:
     mode: disabled                # 容器默认关闭用户登录；改为 open/restricted 可启用
     allowed_usernames: []           # 白名单；open 模式下控制重启后端按钮
     session_ttl_hours: 168
+    persistent_sessions: disabled
+    clear_access_on_logout: false
   history:
     similarity_threshold: 0.85
     dedup_interval_seconds: 60

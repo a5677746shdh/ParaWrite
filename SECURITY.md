@@ -23,6 +23,7 @@ We aim to acknowledge reports within a few business days.
 - **API keys** belong in environment variables or local `config/config.yaml` (gitignored). Never commit real keys.
 - **TOTP secrets** (`auth.access_totp_secret`, `auth.restart_totp_secret`) grant deployment-level access. Treat them like passwords.
 - **User passwords** are stored as hashes in SQLite; the database file (`data/parawrite.db`) must not be published.
+- When session persistence is enabled, **session token hashes** (not plaintext tokens) are also stored in `parawrite.db`. Protect the database file accordingly.
 - Run production instances behind **HTTPS** so session cookies are protected in transit.
 - Enable `auth.access_totp_secret` when exposing ParaWrite on the public internet.
 

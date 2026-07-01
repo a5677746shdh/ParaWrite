@@ -116,6 +116,7 @@ auth:
   access_totp_secret: ${ACCESS_TOTP_SECRET}    # 设置后，进入应用需 TOTP 验证码
   restart_totp_secret: ${RESTART_TOTP_SECRET}  # 设置后，重启后端需额外 TOTP
   session_ttl_hours: 24                        # TOTP 会话 Cookie 有效期（小时）
+  persistent_sessions: false                   # true: 勾选「不再验证」后会话写入 SQLite，重启后仍有效
 
 # ---------------------------------------------------------------------------
 # 用户登录与翻译历史 / User login & translation history（SQLite）
@@ -129,6 +130,8 @@ users:
       - alice
       - bob
     session_ttl_hours: 168   # 用户登录会话有效期（小时），默认 7 天
+    persistent_sessions: disabled  # disabled | restricted | all；仅勾选「记住我」时写入 SQLite
+    clear_access_on_logout: false  # true: 用户退出登录时同时清除 TOTP 网页验证
   history:
     similarity_threshold: 0.85    # 全部记录去重：原文相似度阈值 0~1
     dedup_interval_seconds: 60    # 去重时间窗口（秒）

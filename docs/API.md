@@ -78,10 +78,10 @@ Contextual dictionary lookup with hybrid sources and LLM fallback.
 |--------|------|-------------|
 | `POST` | `/api/user/register` | Register; body `{ username, password, nickname?, rememberMe? }` |
 | `POST` | `/api/user/login` | Login; body `{ username, password, rememberMe? }` |
-| `POST` | `/api/user/logout` | Clear user session |
+| `POST` | `/api/user/logout` | Clear user session; clears TOTP access session only when `users.login.clear_access_on_logout` is `true` |
 | `GET` | `/api/user/me` | Current user profile |
 
-`rememberMe: false` (default) uses a session cookie; `true` sets `maxAge` from `users.login.session_ttl_hours`.
+`rememberMe: true` sets `maxAge` from `users.login.session_ttl_hours`; omitted or `false` uses a browser session cookie. When `users.login.persistent_sessions` is enabled, only `rememberMe: true` sessions are written to SQLite for restart survival.
 
 ## Translation history (authenticated users)
 

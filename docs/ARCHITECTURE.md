@@ -57,13 +57,26 @@ Two independent mechanisms (both optional):
 
 User login modes: `disabled`, `restricted` (whitelist registration), `open`.
 
+### Session persistence (optional)
+
+Remember-me sessions can survive server restarts when stored in SQLite:
+
+| Config | Scope |
+|--------|--------|
+| `auth.persistent_sessions: true` | TOTP access sessions (only when user checks **do not verify again**) |
+| `users.login.persistent_sessions` | `disabled` \| `restricted` \| `all` — user sessions (only when **remember me** is checked) |
+
+Token hashes are stored in `access_sessions` and `user_sessions` tables inside `parawrite.db`. Unchecked sessions remain in-memory only.
+
+`users.login.clear_access_on_logout` (default `false`) controls whether signing out also revokes the TOTP access cookie.
+
 ## Data directories
 
 | Path | Contents |
 |------|----------|
 | `config/config.yaml` | Local secrets and settings (gitignored) |
 | `config/glossary.yaml` | Optional global glossary (gitignored) |
-| `data/` | SQLite `parawrite.db` (gitignored) |
+| `data/` | SQLite `parawrite.db` — users, history, optional session hashes (gitignored) |
 | `data/user-configs/` | Per-user `app` / `theme` YAML (`{config_id}.yaml`) |
 | `data/user-glossaries/` | Per-user glossary YAML (`{glossary_id}.yaml`) |
 

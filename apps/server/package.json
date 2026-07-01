@@ -1,13 +1,14 @@
 {
   "name": "@parawrite/server",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "pnpm run build && tsx --test src/session-persistence.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",

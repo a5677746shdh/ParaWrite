@@ -221,10 +221,12 @@ auth:
   access_totp_secret: ${ACCESS_TOTP_SECRET}
   restart_totp_secret: ${RESTART_TOTP_SECRET}
   session_ttl_hours: 24
+  persistent_sessions: false   # true: remember-me TOTP sessions survive server restart
 ```
 
 - **access_totp_secret** — When set, all `/api/*` routes (except public meta/auth) require a TOTP-verified session cookie.
 - **restart_totp_secret** — When set, `POST /api/admin/restart` requires a TOTP code in the body.
+- **persistent_sessions** — When `true`, sessions created with **remember me** checked on the TOTP gate are stored in SQLite and survive server restarts. Unchecked sessions remain in-memory only.
 
 ## User login and history
 
@@ -235,6 +237,8 @@ users:
     allowed_usernames:      # restricted: registration whitelist
       - alice
     session_ttl_hours: 168  # Remember-me cookie lifetime (7 days)
+    persistent_sessions: disabled  # disabled | restricted | all
+    clear_access_on_logout: false  # true: user logout also clears TOTP access session
   history:
     similarity_threshold: 0.85
     dedup_interval_seconds: 60
@@ -249,6 +253,16 @@ users:
 | `disabled` | No user routes or history UI |
 | `restricted` | Only `allowed_usernames` may register; existing users can always log in |
 | `open` | Anyone may register; `allowed_usernames` controls restart-button visibility |
+
+**Session persistence across server restarts** (`persistent_sessions`): only applies when the user checks **remember me** on login/register (or **do not verify again** for TOTP). Unchecked sessions stay in-memory and are invalidated on restart.
+
+| `persistent_sessions` | Behavior |
+|-----------------------|----------|
+| `disabled` | Default; no SQLite session storage |
+| `restricted` | Remember-me sessions for `allowed_usernames` only |
+| `all` | Remember-me sessions for all users |
+
+**User logout** (`clear_access_on_logout`): when `false` (default), signing out clears only the user account session; the TOTP access gate session is kept. Set `true` to also revoke the access session on logout.
 
 Logged-in users may save an **interface language** preference (Settings → language selector → **Remember**). It is stored in the `users.locale` column and applied on the next sign-in.
 

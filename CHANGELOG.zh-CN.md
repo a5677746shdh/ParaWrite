@@ -4,6 +4,18 @@
 
 ## [未发布]
 
+## [1.1.2] — 2026-07-01
+
+### 新增
+- 可选的服务端重启后会话持久化（`auth.persistent_sessions`、`users.login.persistent_sessions`）
+- `users.login.clear_access_on_logout` — 控制用户退出时是否同时清除 TOTP 网页验证（默认 `false`）
+
+### 变更
+- 用户退出登录默认不再清除 TOTP 访问会话（需配置 `clear_access_on_logout: true` 才清除）
+- 生产构建排除 `*.test.ts`；测试通过 `tsx` 直接运行源码
+- `pnpm clean` 同时清理 `artifacts/parawrite-beta` 与 tsbuildinfo 文件
+- Beta 包 `docker-compose.yml` 改用可移植的 `./config`、`./data` 挂载路径
+
 ## [1.1.0] — 2026-06-30
 
 ### 新增

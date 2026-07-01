@@ -1,40 +1,26 @@
 #!/usr/bin/env node
-import { rmSync, rmdirSync } from 'node:fs'
+import { rmSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-const distPaths = [
+const removePaths = [
   'packages/core/dist',
   'apps/server/dist',
   'apps/web/dist',
   'apps/web/dev-dist',
+  'artifacts/parawrite-beta',
+  'apps/web/tsconfig.tsbuildinfo',
+  'apps/server/tsconfig.tsbuildinfo',
 ]
 
-const emptyDirs = [
-  'packages/core/src/fixtures',
-  'apps/web/src/components/icons',
-  'apps/web/src/assets/icons',
-  'apps/web/src/assets',
-]
-
-for (const rel of distPaths) {
+for (const rel of removePaths) {
   const abs = path.join(root, rel)
   try {
     rmSync(abs, { recursive: true, force: true })
     console.log(`removed ${rel}`)
   } catch (err) {
     console.warn(`skip ${rel}:`, err instanceof Error ? err.message : err)
-  }
-}
-
-for (const rel of emptyDirs) {
-  const abs = path.join(root, rel)
-  try {
-    rmdirSync(abs)
-    console.log(`removed empty ${rel}`)
-  } catch {
-    // directory missing or not empty — ignore
   }
 }

@@ -16,6 +16,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for scripts, build order, and con
 
 ```bash
 pnpm lint
+pnpm test
 pnpm build
 ```
 
