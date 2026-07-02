@@ -5,6 +5,7 @@
 import type {
   DictionaryEntry,
   HistoryPageResult,
+  ModelAvailabilityResult,
   PublicMeta,
   PublicUserSummary,
   RephraseOption,
@@ -204,6 +205,16 @@ export async function restartServer(totpCode?: string): Promise<void> {
     body: JSON.stringify(totpCode ? { totpCode } : {}),
   })
   await throwIfNotOk(res, 'Restart failed')
+}
+
+export async function checkModelAvailability(): Promise<ModelAvailabilityResult[]> {
+  const res = await fetch('/api/admin/check-models', {
+    ...fetchOptions,
+    method: 'POST',
+  })
+  await throwIfNotOk(res, 'Model availability check failed')
+  const data = (await res.json()) as { results?: ModelAvailabilityResult[] }
+  return data.results ?? []
 }
 
 export async function registerUser(params: {

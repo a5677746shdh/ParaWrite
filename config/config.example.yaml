@@ -18,6 +18,11 @@ server:
 app:
   default_provider: openai          # 默认 LLM 服务商 ID，须与 providers 中的键名一致
   default_model: gpt-4o-mini        # 默认模型 ID；可省略，则使用 provider 内 default 模型
+  # lookup_provider: deepseek       # 查词栏 LLM 服务商；未设置则使用 default_provider
+  # lookup_model: deepseek-v4-flash # 查词栏 LLM 模型；未设置则使用该 provider 的默认模型
+  # show_provider_in_model_select: true  # false：模型下拉仅显示模型名（不显示服务商前缀）
+  # enable_translate_model_select: true  # false：隐藏顶栏翻译模型选框
+  # enable_lookup_model_select: true    # false：隐藏查词栏模型设置按钮
   auto_translate_delay_seconds: 2   # 输入后自动翻译延迟（秒）；0 表示关闭
   runtime_env: dev                  # 可选，显示在版本号旁的环境标识
   translate_on_enter: false         # true：Enter 翻译；false：Ctrl/Cmd+Enter 翻译

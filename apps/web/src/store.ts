@@ -30,6 +30,8 @@ interface TranslationState {
   detectedSourceLang: string | null
   provider: string
   model: string
+  lookupProvider: string
+  lookupModel: string
   sourceText: string
   targetText: string
   isTranslating: boolean
@@ -58,6 +60,7 @@ interface TranslationState {
   setProvider: (provider: string) => void
   setModel: (model: string) => void
   setProviderModel: (provider: string, model: string) => void
+  setLookupProviderModel: (provider: string, model: string) => void
   setSourceText: (text: string) => void
   setTargetText: (text: string) => void
   appendTargetText: (chunk: string) => void
@@ -84,6 +87,8 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
   detectedSourceLang: null,
   provider: '',
   model: '',
+  lookupProvider: '',
+  lookupModel: '',
   sourceText: '',
   targetText: '',
   isTranslating: false,
@@ -104,6 +109,8 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
       meta,
       provider: meta.defaultProvider,
       model: meta.defaultModel,
+      lookupProvider: meta.lookupProvider,
+      lookupModel: meta.lookupModel,
       userLocale: meta.userLogin?.authenticated ? applyLocaleFromMeta(meta) : null,
     }),
   refreshMeta: async () => {
@@ -112,6 +119,8 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
       meta,
       provider: meta.defaultProvider,
       model: meta.defaultModel,
+      lookupProvider: meta.lookupProvider,
+      lookupModel: meta.lookupModel,
       userLocale: meta.userLogin?.authenticated ? applyLocaleFromMeta(meta) : null,
     })
     if (
@@ -184,6 +193,7 @@ export const useTranslationStore = create<TranslationState>((set, get) => ({
   },
   setModel: (model) => set({ model }),
   setProviderModel: (provider, model) => set({ provider, model }),
+  setLookupProviderModel: (lookupProvider, lookupModel) => set({ lookupProvider, lookupModel }),
   setSourceText: (sourceText) =>
     set({
       sourceText,

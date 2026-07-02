@@ -24,6 +24,11 @@ server:
 app:
   default_provider: openai
   default_model: gpt-4o-mini
+  # lookup_provider: deepseek       # Word-panel LLM provider; defaults to default_provider
+  # lookup_model: deepseek-v4-flash # Word-panel LLM model; defaults to provider default
+  # show_provider_in_model_select: true  # false: model selects show model name only
+  # enable_translate_model_select: true  # false: hide header translation model select
+  # enable_lookup_model_select: true    # false: hide word-panel lookup settings button
   auto_translate_delay_seconds: 2   # 0 = disabled
   runtime_env: dev                  # Shown next to version in UI
   translate_on_enter: false         # true: Enter; false: Ctrl/Cmd+Enter
@@ -163,6 +168,37 @@ providers:
 ```
 
 Mark exactly one model per provider with `default: true`, or set `app.default_model` explicitly.
+
+### Lookup model (word panel)
+
+Word-panel LLM features (synonyms, rephrase, dictionary context) can use a different provider/model than translation:
+
+```yaml
+app:
+  lookup_provider: deepseek   # optional; defaults to default_provider
+  lookup_model: deepseek-v4-flash  # optional; must exist on lookup_provider
+```
+
+When unset, lookup uses the same provider/model as `default_provider` / `default_model`.
+
+### Model select display
+
+```yaml
+app:
+  show_provider_in_model_select: true   # default: true (Provider-Model label and "Provider-ModelName" options)
+```
+
+When `false`, the header and word-panel model dialogs show **model name only** and the label becomes "Model".
+
+### Model select visibility
+
+```yaml
+app:
+  enable_translate_model_select: true   # default: true; false hides header model select
+  enable_lookup_model_select: true      # default: true; false hides word-panel lookup settings
+```
+
+When disabled, the UI uses provider/model from config (`default_*` or `lookup_*`) without runtime switching.
 
 ## Dictionary
 

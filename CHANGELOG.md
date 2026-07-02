@@ -4,6 +4,20 @@ All notable changes to ParaWrite are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-07-02
+
+### Added
+- Separate word-panel LLM provider/model (`lookup_provider`, `lookup_model`) with runtime settings dialog
+- `show_provider_in_model_select` — hide provider prefix in model dropdowns (default `true`)
+- `enable_translate_model_select` / `enable_lookup_model_select` — hide header or word-panel model pickers
+- Admin **Check model availability** in options dialog (`POST /api/admin/check-models`)
+- Clearer config load failure messages on server startup (searched paths, YAML/validation errors)
+- Header shows translation-specific model label when lookup model is configured separately
+
+### Changed
+- Word-panel lookup settings button moves to bottom-right in sheet/modal overlay modes
+- Options dialog back button: **Back to main** vs **Back** on model-check results view
+
 ## [1.1.2] — 2026-07-01
 
 ### Added

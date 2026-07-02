@@ -4,6 +4,20 @@
 
 ## [未发布]
 
+## [1.2.1] — 2026-07-02
+
+### 新增
+- 查词栏独立 LLM 服务商/模型（`lookup_provider`、`lookup_model`）及运行时设置弹窗
+- `show_provider_in_model_select` — 模型下拉隐藏服务商前缀（默认 `true`）
+- `enable_translate_model_select` / `enable_lookup_model_select` — 隐藏顶栏或查词栏模型选择
+- 选项弹窗管理员 **检测模型可用性**（`POST /api/admin/check-models`）
+- 服务端启动时配置加载失败输出更清晰（搜索路径、YAML/校验错误）
+- 查词模型独立配置时顶栏显示「翻译模型」/「服务商-翻译模型」
+
+### 变更
+- 弹窗模式下查词设置按钮移至右下角
+- 选项弹窗底部返回：**返回主界面** 与模型检测结果页的 **返回** 区分
+
 ## [1.1.2] — 2026-07-01
 
 ### 新增

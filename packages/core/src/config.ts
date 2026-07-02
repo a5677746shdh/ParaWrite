@@ -45,6 +45,39 @@ const DEFAULT_THEME: ThemeColors = {
 
 const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/
 
+function summarizeError(err: unknown): string {
+  if (err instanceof Error) return err.message
+  return String(err)
+}
+
+/** Config file paths tried by `findConfigPath()` (in order). */
+export function getConfigSearchPaths(): string[] {
+  return [
+    process.env.PARWRITE_CONFIG,
+    path.resolve(process.cwd(), 'config/config.yaml'),
+    path.resolve(process.cwd(), '../config/config.yaml'),
+    path.resolve(process.cwd(), '../../config/config.yaml'),
+    path.resolve(process.cwd(), 'config/config.docker.yaml'),
+    path.resolve(process.cwd(), '../config/config.docker.yaml'),
+    path.resolve(process.cwd(), '../../config/config.docker.yaml'),
+  ].filter(Boolean) as string[]
+}
+
+/** Log config load failures to the server terminal with a consistent prefix. */
+export function logConfigLoadFailure(error: unknown): void {
+  console.error('[parawrite] Failed to load configuration')
+  if (error instanceof Error) {
+    for (const line of error.message.split('\n')) {
+      console.error(`[parawrite]   ${line}`)
+    }
+    if (error.cause !== undefined) {
+      console.error(`[parawrite]   Cause: ${summarizeError(error.cause)}`)
+    }
+    return
+  }
+  console.error(`[parawrite]   ${String(error)}`)
+}
+
 function resolveEnvVars(value: string): string {
   return value.replace(/\$\{([^}]+)\}/g, (_, name: string) => {
     return process.env[name] ?? ''
@@ -69,16 +102,7 @@ function resolveConfigValues<T>(obj: T): T {
 }
 
 export function findConfigPath(): string {
-  // PARWRITE_CONFIG → cwd/config/config.yaml → cwd/config/config.docker.yaml
-  const candidates = [
-    process.env.PARWRITE_CONFIG,
-    path.resolve(process.cwd(), 'config/config.yaml'),
-    path.resolve(process.cwd(), '../config/config.yaml'),
-    path.resolve(process.cwd(), '../../config/config.yaml'),
-    path.resolve(process.cwd(), 'config/config.docker.yaml'),
-    path.resolve(process.cwd(), '../config/config.docker.yaml'),
-    path.resolve(process.cwd(), '../../config/config.docker.yaml'),
-  ].filter(Boolean) as string[]
+  const candidates = getConfigSearchPaths()
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
@@ -91,7 +115,10 @@ export function findConfigPath(): string {
     return examplePath
   }
 
-  throw new Error('Config not found. Copy config/config.example.yaml to config/config.yaml')
+  const searched = candidates.map((p) => `  - ${p}`).join('\n')
+  throw new Error(
+    `Config file not found. Searched:\n${searched}\nCopy config/config.example.yaml to config/config.yaml`
+  )
 }
 
 export function getConfigDir(configPath?: string): string {
@@ -114,10 +141,35 @@ export function resolveAppPath(relativePath: string, configPath?: string): strin
 
 export function loadConfig(configPath?: string): AppConfig {
   const filePath = configPath ?? findConfigPath()
-  const raw = fs.readFileSync(filePath, 'utf-8')
-  const parsed = yaml.load(raw) as AppConfig
-  const config = resolveConfigValues(parsed)
-  validateConfig(config)
+
+  let raw: string
+  try {
+    raw = fs.readFileSync(filePath, 'utf-8')
+  } catch (err) {
+    const error = new Error(`Cannot read config file: ${filePath}`)
+    error.cause = err
+    throw error
+  }
+
+  let parsed: unknown
+  try {
+    parsed = yaml.load(raw)
+  } catch (err) {
+    throw new Error(`Failed to parse config YAML: ${filePath} — ${summarizeError(err)}`)
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error(`Invalid config: ${filePath} must contain a YAML mapping`)
+  }
+
+  const config = resolveConfigValues(parsed as AppConfig)
+
+  try {
+    validateConfig(config)
+  } catch (err) {
+    throw new Error(`Invalid config (${filePath}): ${summarizeError(err)}`)
+  }
+
   return config
 }
 
@@ -159,6 +211,48 @@ export function getDefaultModel(
   }
   const defaultModel = provider.models.find((m) => m.default)
   return defaultModel?.id ?? provider.models[0]?.id ?? ''
+}
+
+export function getLookupProvider(config: AppConfig): string {
+  const explicit = config.app.lookup_provider?.trim()
+  if (explicit && config.providers[explicit]) {
+    return explicit
+  }
+  return config.app.default_provider
+}
+
+export function getLookupModel(config: AppConfig): string {
+  const providerId = getLookupProvider(config)
+  const provider = getProviderConfig(config, providerId)
+  const explicit = config.app.lookup_model?.trim()
+  if (explicit && provider.models.some((m) => m.id === explicit)) {
+    return explicit
+  }
+  return getDefaultModel(config, providerId)
+}
+
+export function getShowProviderInModelSelect(config: AppConfig): boolean {
+  return config.app.show_provider_in_model_select ?? true
+}
+
+export function getEnableTranslateModelSelect(config: AppConfig): boolean {
+  return config.app.enable_translate_model_select ?? true
+}
+
+export function getEnableLookupModelSelect(config: AppConfig): boolean {
+  return config.app.enable_lookup_model_select ?? true
+}
+
+export function isLookupModelSeparate(config: AppConfig): boolean {
+  if (config.app.lookup_provider?.trim() || config.app.lookup_model?.trim()) {
+    return true
+  }
+  const lookupProvider = getLookupProvider(config)
+  const lookupModel = getLookupModel(config)
+  return (
+    lookupProvider !== config.app.default_provider ||
+    lookupModel !== getDefaultModel(config)
+  )
 }
 
 export function getLayoutBreakpoints(config: AppConfig) {
@@ -450,6 +544,12 @@ export function toPublicMeta(
   return {
     defaultProvider: config.app.default_provider,
     defaultModel: getDefaultModel(config),
+    lookupProvider: getLookupProvider(config),
+    lookupModel: getLookupModel(config),
+    showProviderInModelSelect: getShowProviderInModelSelect(config),
+    enableTranslateModelSelect: getEnableTranslateModelSelect(config),
+    enableLookupModelSelect: getEnableLookupModelSelect(config),
+    lookupModelSeparate: isLookupModelSeparate(config),
     providers,
     version: BUILD_VERSION,
     runtimeEnv: runtimeEnv || undefined,

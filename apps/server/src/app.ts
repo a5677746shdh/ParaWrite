@@ -40,6 +40,9 @@ import {
   shouldClearAccessOnUserLogout,
   toPublicMeta,
   verifyTotp,
+  canRestartBackend,
+  checkConfiguredModelAvailability,
+  logModelAvailabilityResults,
   type AppConfig,
   type RephraseOption,
   type SynonymOption,
@@ -760,6 +763,35 @@ export function createApp(config: AppConfig, configPath?: string): Hono<AppEnv> 
     events.backendRestart(c)
     setTimeout(() => process.exit(0), 300)
     return c.json({ ok: true })
+  })
+
+  app.post('/api/admin/check-models', async (c) => {
+    const userToken = getCookie(c, USER_SESSION_COOKIE_NAME)
+    let userLogin: { authenticated: false; user: null } | ReturnType<typeof toPublicUserSummary> =
+      { authenticated: false, user: null }
+    let effectiveConfig = config
+
+    if (userService && userSessionManager && userResourceCache) {
+      const profile = getAuthenticatedProfile(userSessionManager, userService, userToken)
+      if (profile) {
+        userLogin = toPublicUserSummary(profile)
+        effectiveConfig = userResourceCache.getEffectiveConfig(profile)
+      }
+    }
+
+    if (!canRestartBackend(config, userLogin)) {
+      return c.json({ error: 'Forbidden' }, 403)
+    }
+
+    try {
+      const results = await checkConfiguredModelAvailability(effectiveConfig)
+      logModelAvailabilityResults(results)
+      return c.json({ results })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Model check failed'
+      logAppRouteError(c, events, message)
+      return c.json({ error: message }, 500)
+    }
   })
 
   app.post('/api/dictionary/context', async (c) => {

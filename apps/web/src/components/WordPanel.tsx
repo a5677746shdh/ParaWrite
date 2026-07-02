@@ -12,6 +12,9 @@ import { translateText } from '../api'
 import { optionChipClass, optionListButtonClass, modalCloseButtonClass, paneIconButtonClass } from '../ui'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { PanelLoader } from './PanelLoader'
+import { LookupModelDialog } from './LookupModelDialog'
+import { RobotIcon } from '../icons/RobotIcon'
+import { useTranslationStore } from '../store'
 
 interface WordPanelProps {
   mode: 'resident' | 'modal' | 'sheet'
@@ -511,6 +514,10 @@ export const WordPanel = memo(function WordPanel({
   onClose,
 }: WordPanelProps) {
   const { t } = useTranslation()
+  const showLookupSettings = useTranslationStore(
+    (s) => (s.meta?.enableLookupModelSelect ?? true) && (s.meta?.providers.length ?? 0) > 0
+  )
+  const [lookupModelOpen, setLookupModelOpen] = useState(false)
   const isOverlay = mode !== 'resident' && visible
   useBodyScrollLock(isOverlay)
 
@@ -661,9 +668,26 @@ export const WordPanel = memo(function WordPanel({
 
   if (mode !== 'resident' && !visible) return null
 
+  const lookupModelDialog = (
+    <LookupModelDialog open={lookupModelOpen} onClose={() => setLookupModelOpen(false)} />
+  )
+
   const showHint = mode === 'resident' && !selectedWord && !isLoading
   const showClose = mode !== 'resident'
   const showPanelContent = !!selectedWord || isLoading
+  const lookupInHeader = mode === 'resident'
+
+  const lookupSettingsButton = showLookupSettings ? (
+    <button
+      type="button"
+      onClick={() => setLookupModelOpen(true)}
+      title={t('lookupSettings')}
+      aria-label={t('lookupSettings')}
+      className={paneIconButtonClass}
+    >
+      <RobotIcon />
+    </button>
+  ) : null
 
   const panelBody = (
     <>
@@ -671,17 +695,20 @@ export const WordPanel = memo(function WordPanel({
         <h3 className="text-lg font-semibold text-deepl-blue">
           {selectedWord ? `"${selectedWord}"` : t('wordPanelTitle')}
         </h3>
-        {showClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            title={t('close')}
-            aria-label={t('close')}
-            className={modalCloseButtonClass}
-          >
-            ✕
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {lookupInHeader && lookupSettingsButton}
+          {showClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              title={t('close')}
+              aria-label={t('close')}
+              className={modalCloseButtonClass}
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {showHint ? (
@@ -827,43 +854,63 @@ export const WordPanel = memo(function WordPanel({
     </>
   )
 
+  const overlayPanelContent = (
+    <>
+      <div className="flex flex-col gap-4 overflow-y-auto overscroll-contain p-4 pb-14 touch-pan-y">
+        {panelBody}
+      </div>
+      {lookupSettingsButton && (
+        <div className="absolute bottom-4 right-4 z-10">{lookupSettingsButton}</div>
+      )}
+    </>
+  )
+
   if (mode === 'sheet') {
     return (
-      <div
-        className="fixed inset-0 z-50 flex items-end overscroll-none bg-black/30"
-        onClick={onClose}
-        role="presentation"
-      >
+      <>
         <div
-          className="flex max-h-[70vh] w-full touch-pan-y flex-col gap-4 overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-4 shadow-xl"
-          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-50 flex items-end overscroll-none bg-black/30"
+          onClick={onClose}
+          role="presentation"
         >
-          {panelBody}
+          <div
+            className="relative flex max-h-[70vh] w-full flex-col rounded-t-2xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {overlayPanelContent}
+          </div>
         </div>
-      </div>
+        {lookupModelDialog}
+      </>
     )
   }
 
   if (mode === 'modal') {
     return (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center overscroll-none bg-black/30 p-4"
-        onClick={onClose}
-        role="presentation"
-      >
+      <>
         <div
-          className="flex max-h-[80vh] w-full max-w-md touch-pan-y flex-col gap-4 overflow-y-auto overscroll-contain rounded-xl bg-white p-4 shadow-xl"
-          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-50 flex items-center justify-center overscroll-none bg-black/30 p-4"
+          onClick={onClose}
+          role="presentation"
         >
-          {panelBody}
+          <div
+            className="relative flex max-h-[80vh] w-full max-w-md flex-col rounded-xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {overlayPanelContent}
+          </div>
         </div>
-      </div>
+        {lookupModelDialog}
+      </>
     )
   }
 
   return (
-    <aside className="flex w-full min-w-0 flex-col gap-4 self-start overflow-hidden rounded-2xl border border-deepl-border bg-white p-4 shadow-sm">
-      {panelBody}
-    </aside>
+    <>
+      <aside className="flex w-full min-w-0 flex-col gap-4 self-start overflow-hidden rounded-2xl border border-deepl-border bg-white p-4 shadow-sm">
+        {panelBody}
+      </aside>
+      {lookupModelDialog}
+    </>
   )
 })

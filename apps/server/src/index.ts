@@ -8,6 +8,7 @@ import {
   checkConfiguredModelAvailability,
   findConfigPath,
   loadConfig,
+  logConfigLoadFailure,
   logModelAvailabilityResults,
 } from '@parawrite/core'
 
@@ -19,7 +20,7 @@ try {
   configPath = findConfigPath()
   config = loadConfig(configPath)
 } catch (error) {
-  console.error('Failed to load config:', error)
+  logConfigLoadFailure(error)
   process.exit(1)
 }
 

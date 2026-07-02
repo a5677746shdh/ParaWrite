@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect, type ReactNode } from 'react'
+import { useState, useRef, useLayoutEffect, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslationStore } from '../store'
@@ -6,8 +6,12 @@ import { LanguageSelect } from './LanguageSelect'
 import { ResetDialog } from './ResetDialog'
 import { AutoSwapIcon } from '../icons/AutoSwapIcon'
 import { formSelectClass, headerIconButtonClass } from '../ui'
-
-const PROVIDER_MODEL_SEP = '::'
+import {
+  buildProviderModelOptions,
+  formatProviderModelValue,
+  parseProviderModelValue,
+} from '../lib/provider-model-select'
+import { getTranslationModelLabelKey } from '../lib/translation-model-label'
 
 const PROVIDER_SELECT_MIN_WIDTH = 120
 const PROVIDER_SELECT_MAX_WIDTH = 320
@@ -84,6 +88,8 @@ export function Header() {
     detectedSourceLang,
     provider,
     model,
+    lookupProvider,
+    lookupModel,
     setSourceLang,
     setTargetLang,
     swapLanguages,
@@ -96,6 +102,8 @@ export function Header() {
       detectedSourceLang: s.detectedSourceLang,
       provider: s.provider,
       model: s.model,
+      lookupProvider: s.lookupProvider,
+      lookupModel: s.lookupModel,
       setSourceLang: s.setSourceLang,
       setTargetLang: s.setTargetLang,
       swapLanguages: s.swapLanguages,
@@ -117,18 +125,25 @@ export function Header() {
     localStorage.setItem('parawrite-ui-lang', lang)
   }
 
-  const providerModelValue = `${provider}${PROVIDER_MODEL_SEP}${model}`
+  const providerModelValue = formatProviderModelValue(provider, model)
+  const showProviderInSelect = meta?.showProviderInModelSelect ?? true
+  const showTranslateModelSelect = meta?.enableTranslateModelSelect ?? true
 
-  const providerModelOptions =
-    meta?.providers.flatMap((p) =>
-      p.models.map((m) => ({
-        value: `${p.id}${PROVIDER_MODEL_SEP}${m.id}`,
-        label: `${p.id}-${m.name}`,
-      }))
-    ) ?? []
+  const providerModelOptions = useMemo(
+    () => (meta ? buildProviderModelOptions(meta.providers, showProviderInSelect) : []),
+    [meta, showProviderInSelect]
+  )
 
   const providerModelLabel =
     providerModelOptions.find((o) => o.value === providerModelValue)?.label ?? ''
+
+  const providerModelLabelKey = useMemo(
+    () =>
+      meta
+        ? getTranslationModelLabelKey(meta, provider, model, lookupProvider, lookupModel)
+        : 'model',
+    [meta, provider, model, lookupProvider, lookupModel]
+  )
 
   const providerMeasureRef = useRef<HTMLSpanElement>(null)
   const [providerSelectWidth, setProviderSelectWidth] = useState(PROVIDER_SELECT_MIN_WIDTH)
@@ -147,8 +162,8 @@ export function Header() {
   }, [providerModelLabel, providerModelOptions])
 
   const handleProviderModelChange = (value: string) => {
-    const [p, m] = value.split(PROVIDER_MODEL_SEP)
-    if (p && m) setProviderModel(p, m)
+    const parsed = parseProviderModelValue(value)
+    if (parsed) setProviderModel(parsed.provider, parsed.model)
   }
 
   const handleReloadFrontend = () => {
@@ -203,9 +218,9 @@ export function Header() {
             />
 
             <div className="flex shrink-0 items-end gap-2">
-              {meta && providerModelOptions.length > 0 && (
+              {meta && showTranslateModelSelect && providerModelOptions.length > 0 && (
                 <label className="relative flex flex-col gap-1 text-sm">
-                  <span className="font-medium text-deepl-blue/70">{t('providerModel')}</span>
+                  <span className="font-medium text-deepl-blue/70">{t(providerModelLabelKey)}</span>
                   <span
                     ref={providerMeasureRef}
                     aria-hidden

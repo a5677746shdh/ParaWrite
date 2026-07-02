@@ -27,3 +27,4 @@ export type {
   UserMeProfile,
 } from './types.js'
 export type { DiffPart } from './diff.js'
+export type { ModelAvailabilityResult } from './provider-health.js'

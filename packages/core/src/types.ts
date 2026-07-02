@@ -192,6 +192,16 @@ export interface AppConfig {
   app: {
     default_provider: string
     default_model?: string
+    /** Provider for word-panel LLM requests (synonyms/rephrase/dictionary). Falls back to default_provider. */
+    lookup_provider?: string
+    /** Model for word-panel LLM requests. Falls back to default model for lookup_provider. */
+    lookup_model?: string
+    /** When false, model selects show model name only (no provider prefix). Default true. */
+    show_provider_in_model_select?: boolean
+    /** When false, hide header translation model select. Default true. */
+    enable_translate_model_select?: boolean
+    /** When false, hide word-panel lookup model settings. Default true. */
+    enable_lookup_model_select?: boolean
     auto_translate_delay_seconds?: number
     runtime_env?: string
     translate_on_enter?: boolean
@@ -265,6 +275,13 @@ export interface HistoryPageResult {
 export interface PublicMeta {
   defaultProvider: string
   defaultModel: string
+  lookupProvider: string
+  lookupModel: string
+  showProviderInModelSelect: boolean
+  enableTranslateModelSelect: boolean
+  enableLookupModelSelect: boolean
+  /** True when resolved lookup provider/model differs from default translation model. */
+  lookupModelSeparate: boolean
   providers: PublicProviderInfo[]
   version: string
   runtimeEnv?: string

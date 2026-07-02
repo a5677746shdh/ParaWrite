@@ -10,6 +10,11 @@ server:
 app:
   default_provider: DeepSeek
   default_model: deepseek-v4-flash
+  # lookup_provider: DeepSeek
+  # lookup_model: deepseek-v4-flash
+  # show_provider_in_model_select: true
+  # enable_translate_model_select: true
+  # enable_lookup_model_select: true
   auto_translate_delay_seconds: 3
   runtime_env: docker
   translate_on_enter: false
